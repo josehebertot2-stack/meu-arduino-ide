@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Files, Plus, Zap, Check, AlertTriangle, 
@@ -375,8 +374,8 @@ const App: React.FC = () => {
               {consoleTab === 'output' ? (
                 <div className="space-y-1">
                   {outputMessages.map((m, i) => (
-                    <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>
-                      {">"} {m}
+                    <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}>
+                      <span className="opacity-30 mr-2">&gt;</span> {m}
                     </div>
                   ))}
                 </div>
