@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 /**
@@ -30,6 +31,9 @@ export const getCodeAssistance = async (prompt: string, currentCode: string) => 
     return response.text || "Desculpe, não consegui processar sua solicitação no momento.";
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+    if (error.message?.includes("API key")) {
+      return "Erro: Chave de API não configurada corretamente no ambiente.";
+    }
     return `Erro ao consultar a IA: ${error.message || "Erro desconhecido"}`;
   }
 };
@@ -76,7 +80,7 @@ export const analyzeCode = async (code: string) => {
     return { 
       status: "Erro", 
       summary: "Falha técnica na análise via IA.", 
-      issues: [{ severity: "critical", message: "Conexão com Gemini falhou." }] 
+      issues: [{ severity: "critical", message: "Conexão com Gemini falhou ou API Key ausente." }] 
     };
   }
 };

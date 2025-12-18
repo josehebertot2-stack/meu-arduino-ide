@@ -1,6 +1,6 @@
 {
-  "name": "ArduProgram IDE",
-  "description": "IDE Arduino Web moderna com IA Gemini, Monitor Serial (Web Serial API) e Temas. Programe seu Arduino diretamente do navegador sem instalações. Desenvolvido por José Heberto Torres da Costa.",
+  "name": "ARDUPROGRAM IDE",
+  "description": "IDE Web profissional para microcontroladores com IA Gemini integrada, Monitor Serial e personalização avançada. Desenvolvido por José Heberto Torres da Costa.",
   "requestFramePermissions": [
     "serial"
   ]
