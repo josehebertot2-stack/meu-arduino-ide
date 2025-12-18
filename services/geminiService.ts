@@ -6,10 +6,12 @@ import { GoogleGenAI, Type } from "@google/genai";
  */
 export const getCodeAssistance = async (prompt: string, currentCode: string) => {
   try {
-    // We create a new instance each time to ensure we pick up the latest API key from the environment/dialog
+    // Fix: Use process.env.API_KEY directly in the named parameter object
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest', // Most robust and widely available model
+      // Fix: Use gemini-3-flash-preview for general coding assistance tasks
+      model: 'gemini-3-flash-preview',
       contents: `Contexto do código Arduino atual:\n\`\`\`cpp\n${currentCode}\n\`\`\`\n\nPergunta ou solicitação do usuário: ${prompt}`,
       config: {
         systemInstruction: `Você é o Assistente Sênior Especialista em Arduino. 
@@ -28,10 +30,10 @@ export const getCodeAssistance = async (prompt: string, currentCode: string) => 
     return response.text || "A IA não retornou uma resposta válida.";
   } catch (error: any) {
     console.error("Gemini API Error (Assistance):", error);
-    if (error.message?.includes("not found") || error.status === 404) {
-      return "Erro 404: Modelo não encontrado ou sem permissão. Verifique se sua chave de API está correta e se o faturamento está ativo no Google AI Studio.";
+    if (error.status === 404 || error.message?.toLowerCase().includes("not found")) {
+      return "Erro 404: Modelo não disponível ou sem permissão. Verifique sua Chave de API.";
     }
-    return `Ocorreu um erro: ${error.message || "Verifique sua conexão e chave de API."}`;
+    return `Ocorreu um erro ao consultar a IA: ${error.message || "Erro desconhecido"}`;
   }
 };
 
@@ -40,9 +42,12 @@ export const getCodeAssistance = async (prompt: string, currentCode: string) => 
  */
 export const analyzeCode = async (code: string) => {
   try {
+    // Fix: Use process.env.API_KEY directly
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      // Fix: Use gemini-3-pro-preview for complex reasoning and deep code analysis
+      model: 'gemini-3-pro-preview',
       contents: `Analise este sketch Arduino em busca de erros de sintaxe, lógica e melhorias de performance:\n\`\`\`cpp\n${code}\n\`\`\``,
       config: {
         responseMimeType: "application/json",
@@ -51,29 +56,20 @@ export const analyzeCode = async (code: string) => {
           properties: {
             status: { 
               type: Type.STRING, 
-              description: "Status geral da análise (ex: 'Alerta', 'Ok', 'Crítico')." 
+              description: "Status geral da análise." 
             },
             summary: { 
               type: Type.STRING, 
-              description: "Resumo em uma frase do que foi encontrado." 
+              description: "Resumo em uma frase." 
             },
             issues: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  severity: { 
-                    type: Type.STRING, 
-                    description: "Nível do problema: 'critical', 'warning' ou 'suggestion'." 
-                  },
-                  message: { 
-                    type: Type.STRING, 
-                    description: "Descrição detalhada do problema em PT-BR." 
-                  },
-                  line: { 
-                    type: Type.NUMBER, 
-                    description: "Número da linha aproximada onde o problema ocorre." 
-                  }
+                  severity: { type: Type.STRING },
+                  message: { type: Type.STRING },
+                  line: { type: Type.NUMBER }
                 },
                 required: ["severity", "message"]
               }
@@ -90,10 +86,10 @@ export const analyzeCode = async (code: string) => {
     console.error("Gemini API Error (Analysis):", error);
     return { 
       status: "Erro", 
-      summary: error.message?.includes("not found") ? "Modelo não encontrado (404)." : "A análise falhou.", 
+      summary: "Falha na análise de código.", 
       issues: [{ 
         severity: "critical", 
-        message: "Erro na análise de código. Verifique sua configuração de API nas preferências." 
+        message: "Verifique sua chave de API nas configurações." 
       }] 
     };
   }
