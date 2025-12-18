@@ -1,18 +1,20 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Files, Plus, Zap, Check, FileCode, Settings, X, 
-  Box, Trash2, Search, Terminal,
-  User, Instagram, Sun, Moon, ArrowRight,
+  Box, Trash2, Search, Terminal, MessageSquare,
+  User, Instagram, Sun, Moon, ArrowRight, Send, Sparkles,
   Cpu, HardDrive, Type as TypeIcon,
-  WrapText, Save, Globe
+  WrapText, Save, Globe, Key
 } from 'lucide-react';
-import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary } from './types';
-import { analyzeCode } from './services/geminiService';
+import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage } from './types';
+import { analyzeCode, getCodeAssistance } from './services/geminiService';
 
 const TRANSLATIONS = {
   pt: {
     ide_name: "ARDUPROGRAM",
     nav_files: "Arquivos",
+    nav_ai: "IA Assistente",
     nav_libs: "Bibliotecas",
     nav_creator: "Créditos",
     nav_settings: "Ajustes",
@@ -26,6 +28,11 @@ const TRANSLATIONS = {
     settings_system: "Sistema",
     settings_autosave: "Salvar Automático",
     settings_lang: "Idioma da IDE",
+    ai_placeholder: "Pergunte algo sobre seu código...",
+    ai_no_key_title: "Assistente IA Desativado",
+    ai_no_key_desc: "Para usar a IA, você precisa conectar sua própria chave do Google AI Studio. É gratuito para desenvolvedores.",
+    ai_btn_connect: "Ativar com minha Chave",
+    ai_billing_info: "Saiba mais sobre faturamento e limites",
     serial_placeholder: "Enviar comando para o Arduino...",
     terminal_tab: "Console de Saída",
     serial_tab: "Monitor Serial",
@@ -42,6 +49,7 @@ const TRANSLATIONS = {
   en: {
     ide_name: "ARDUPROGRAM",
     nav_files: "Files",
+    nav_ai: "AI Assistant",
     nav_libs: "Libraries",
     nav_creator: "Credits",
     nav_settings: "Settings",
@@ -55,6 +63,11 @@ const TRANSLATIONS = {
     settings_system: "System",
     settings_autosave: "Auto Save",
     settings_lang: "IDE Language",
+    ai_placeholder: "Ask something about your code...",
+    ai_no_key_title: "AI Assistant Disabled",
+    ai_no_key_desc: "To use the AI, you need to connect your own Google AI Studio key. It's free for developers.",
+    ai_btn_connect: "Activate with my Key",
+    ai_billing_info: "Learn more about billing and limits",
     serial_placeholder: "Send command to Arduino...",
     terminal_tab: "Output Console",
     serial_tab: "Serial Monitor",
@@ -108,6 +121,7 @@ const App: React.FC = () => {
   const isDark = theme === 'dark';
 
   const [activeTab, setActiveTab] = useState<TabType>('files');
+  const [hasAiKey, setHasAiKey] = useState(false);
   const [files, setFiles] = useState<FileNode[]>(() => {
     try {
       const saved = localStorage.getItem('ardu_files');
@@ -117,9 +131,12 @@ const App: React.FC = () => {
   });
   
   const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [prompt, setPrompt] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
   const [serialInput, setSerialInput] = useState('');
-  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE iniciada com sucesso (Modo Offline)."]);
+  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE inicializada com sucesso."]);
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -129,8 +146,20 @@ const App: React.FC = () => {
   const portRef = useRef<any>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const activeFile = useMemo(() => files[activeFileIndex] || files[0], [files, activeFileIndex]);
+
+  useEffect(() => {
+    // Verificar se o usuário já selecionou uma chave anteriormente
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const has = await window.aistudio.hasSelectedApiKey();
+        setHasAiKey(has);
+      }
+    };
+    checkKey();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ardu_theme', theme);
@@ -148,6 +177,35 @@ const App: React.FC = () => {
   useEffect(() => {
     if (consoleEndRef.current) consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [serialMessages, outputMessages]);
+
+  useEffect(() => {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
+
+  const handleOpenKeySelect = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assumimos sucesso conforme as regras da documentação
+      setHasAiKey(true);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!prompt.trim() || isChatLoading || !hasAiKey) return;
+    const userMsg = prompt;
+    setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
+    setPrompt('');
+    setIsChatLoading(true);
+
+    try {
+      const response = await getCodeAssistance(userMsg, activeFile.content);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: response }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: 'assistant', text: "Erro na comunicação com a IA." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   const handleVerify = async () => {
     if (isBusy) return;
@@ -245,6 +303,7 @@ const App: React.FC = () => {
         <nav className={`w-14 border-r ${isDark ? 'border-white/5 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'} flex flex-col items-center py-6 gap-6 shrink-0`}>
           {[
             { id: 'files', icon: Files, title: t.nav_files },
+            { id: 'ai', icon: MessageSquare, title: t.nav_ai },
             { id: 'libraries', icon: Box, title: t.nav_libs },
             { id: 'creator', icon: User, title: t.nav_creator },
             { id: 'settings', icon: Settings, title: t.nav_settings },
@@ -262,6 +321,67 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {activeTab === 'ai' && (
+              <div className="flex flex-col h-full bg-[#0f172a]">
+                {!hasAiKey ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
+                      <Key size={32} className="text-blue-500" />
+                    </div>
+                    <h3 className="text-white font-bold text-sm mb-3">{t.ai_no_key_title}</h3>
+                    <p className="text-[11px] opacity-60 mb-6 leading-relaxed">
+                      {t.ai_no_key_desc}
+                    </p>
+                    <button 
+                      onClick={handleOpenKeySelect}
+                      className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <Sparkles size={14} /> {t.ai_btn_connect}
+                    </button>
+                    <a 
+                      href="https://ai.google.dev/gemini-api/docs/billing" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="mt-6 text-[10px] text-blue-500 hover:underline flex items-center gap-1.5"
+                    >
+                      <Globe size={12}/> {t.ai_billing_info}
+                    </a>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                      {chatHistory.length === 0 && (
+                         <div className="opacity-30 text-[11px] text-center mt-4">Nenhuma mensagem ainda.</div>
+                      )}
+                      {chatHistory.map((msg, i) => (
+                        <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                          <div className={`max-w-[90%] rounded-xl p-3 text-[12px] ${msg.role === 'user' ? 'bg-[#2563eb] text-white' : 'bg-[#1e293b] text-slate-300 border border-white/5'}`}>
+                            {msg.text}
+                          </div>
+                        </div>
+                      ))}
+                      {isChatLoading && <div className="text-[10px] text-blue-500 font-bold animate-pulse px-2">Gemini está pensando...</div>}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <div className="p-3 border-t border-white/5">
+                      <div className="flex gap-2 bg-[#1e293b] rounded-lg p-1 border border-white/10 focus-within:border-blue-500 transition-all">
+                        <input 
+                          value={prompt} 
+                          onChange={e => setPrompt(e.target.value)} 
+                          onKeyDown={e => e.key === 'Enter' && handleSendMessage()} 
+                          placeholder={t.ai_placeholder} 
+                          className="flex-1 bg-transparent px-2 py-1.5 text-[12px] text-white outline-none" 
+                        />
+                        <button onClick={handleSendMessage} disabled={isChatLoading} className="p-2 bg-[#2563eb] text-white rounded-md hover:bg-blue-600 transition-colors">
+                          <Send size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {activeTab === 'files' && (
               <div className="flex flex-col">
                 <button onClick={() => setFiles([...files, { name: `sketch_${files.length}.ino`, content: DEFAULT_CODE, isOpen: true }])} className="m-4 flex items-center justify-center gap-2 p-2 border border-dashed border-slate-500/30 rounded text-[11px] font-bold hover:border-blue-500 transition-all"><Plus size={14}/> Novo Arquivo</button>
@@ -415,7 +535,7 @@ const App: React.FC = () => {
          <div className="flex gap-6 opacity-80">
            <span>{t.footer_lines}: {(activeFile.content || '').split('\n').length}</span>
            <span>{t.footer_chars}: {activeFile.content.length}</span>
-           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Save size={10}/> Modo Local</span>
+           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> {hasAiKey ? 'IA Online' : 'IA Offline'}</span>
          </div>
       </footer>
     </div>

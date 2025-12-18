@@ -1,5 +1,10 @@
 
-interface Window {}
+interface Window {
+  aistudio?: {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  };
+}
 
 interface Navigator {
   serial: {

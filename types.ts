@@ -10,7 +10,8 @@ export interface ChatMessage {
   code?: string;
 }
 
-export type TabType = 'files' | 'examples' | 'boards' | 'libraries' | 'debug' | 'creator' | 'settings';
+// Added 'ai' to the union type to avoid 'no overlap' error in App.tsx
+export type TabType = 'files' | 'ai' | 'examples' | 'boards' | 'libraries' | 'debug' | 'creator' | 'settings';
 
 export interface SerialMessage {
   timestamp: string;
