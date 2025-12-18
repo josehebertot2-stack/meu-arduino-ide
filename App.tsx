@@ -4,9 +4,8 @@ import {
   FileCode, Settings, X, Sparkles, Wand2, 
   BookOpen, Layers, Info, Cpu as BoardIcon,
   ArrowRight, Save, RotateCcw, Github, ExternalLink, 
-  Sliders, Type as FontIcon, Monitor, Box, Sun, Moon, Instagram, Key,
-  Terminal as TerminalIcon,
-  MessageSquare
+  Sliders, Type as FontIcon, Monitor, Box, Sun, Moon, Instagram,
+  Terminal as TerminalIcon, MessageSquare, Trash2, Download, Search
 } from 'lucide-react';
 import { FileNode, ChatMessage, TabType, SerialMessage, ArduinoExample, ArduinoBoard, ArduinoLibrary } from './types';
 import { getCodeAssistance, analyzeCode } from './services/geminiService';
@@ -25,10 +24,9 @@ const BOARDS: ArduinoBoard[] = [
 ];
 
 const LIBRARIES: ArduinoLibrary[] = [
-  { name: 'Adafruit Unified Sensor', version: '1.1.4', author: 'Adafruit', description: 'Required for all Adafruit Unified Sensor based libraries.', header: '#include <Adafruit_Sensor.h>' },
-  { name: 'DHT sensor library', version: '1.4.3', author: 'Adafruit', description: 'Arduino library for DHT11, DHT22, etc.', header: '#include <DHT.h>' },
-  { name: 'WiFi', version: '1.2.7', author: 'Arduino', description: 'Enables network connection (local and Internet).', header: '#include <WiFi.h>' },
-  { name: 'LiquidCrystal', version: '1.0.7', author: 'Arduino', description: 'Allows communication with LCDs.', header: '#include <LiquidCrystal.h>' }
+  { name: 'Adafruit Unified Sensor', version: '1.1.4', author: 'Adafruit', description: 'Obrigatória para sensores baseados em Adafruit Unified.', header: '#include <Adafruit_Sensor.h>' },
+  { name: 'DHT sensor library', version: '1.4.3', author: 'Adafruit', description: 'Biblioteca para DHT11, DHT22, etc.', header: '#include <DHT.h>' },
+  { name: 'WiFi', version: '1.2.7', author: 'Arduino', description: 'Habilita conexões de rede locais e internet.', header: '#include <WiFi.h>' }
 ];
 
 const App: React.FC = () => {
@@ -45,15 +43,13 @@ const App: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
-  const [outputMessages, setOutputMessages] = useState<string[]>(["IDE Iniciada com sucesso.", "Pronto para programar."]);
+  const [outputMessages, setOutputMessages] = useState<string[]>(["IDE Iniciada.", "Selecione uma placa para começar."]);
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [selectedBoard, setSelectedBoard] = useState(BOARDS[0]);
-  
   const [fontSize, setFontSize] = useState(14);
-  const [showLineNumbers] = useState(true);
 
   const portRef = useRef<any>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
@@ -75,7 +71,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = file.name.endsWith('.ino') ? file.name : `${file.name}.ino`;
+    a.download = file.name;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -85,40 +81,26 @@ const App: React.FC = () => {
   const handleVerify = async () => {
     setIsBusy(true);
     setConsoleTab('output');
-    setOutputMessages(prev => [...prev, `Verificando código: ${activeFile.name}...`]);
-    
-    for(let i=0; i<=100; i+=10) {
-      setProgress(i);
-      await new Promise(r => setTimeout(r, 100));
-    }
-
+    setOutputMessages(prev => [...prev, `Verificando ${activeFile.name}...`]);
+    for(let i=0; i<=100; i+=25) { setProgress(i); await new Promise(r => setTimeout(r, 100)); }
     const result = await analyzeCode(activeFile.content);
     if (result.status === 'Ok' || result.status === 'Alerta') {
-      setOutputMessages(prev => [...prev, "Compilação concluída!", "O sketch usa 444 bytes de espaço de armazenamento."]);
+      setOutputMessages(prev => [...prev, "Compilação concluída!", `Resumo: ${result.summary}`]);
     } else {
       setOutputMessages(prev => [...prev, `[ERRO] ${result.summary}`]);
-      result.issues?.forEach((issue: any) => {
-        setOutputMessages(prev => [...prev, `Linha ${issue.line || '?'}: ${issue.message}`]);
-      });
+      result.issues?.forEach((issue: any) => setOutputMessages(prev => [...prev, `Linha ${issue.line}: ${issue.message}`]));
     }
-    
     setIsBusy(false);
     setProgress(0);
   };
 
   const handleUpload = async () => {
-    if (!isConnected) {
-      setOutputMessages(prev => [...prev, "Erro: Nenhuma placa conectada via Serial."]);
-      return;
-    }
+    if (!isConnected) { setOutputMessages(prev => [...prev, "Erro: Nenhuma porta serial ativa."]); return; }
     setIsBusy(true);
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `Carregando para ${selectedBoard.name}...`]);
-    for(let i=0; i<=100; i+=20) {
-      setProgress(i);
-      await new Promise(r => setTimeout(r, 150));
-    }
-    setOutputMessages(prev => [...prev, "Upload concluído!", "Reiniciando placa..."]);
+    for(let i=0; i<=100; i+=20) { setProgress(i); await new Promise(r => setTimeout(r, 150)); }
+    setOutputMessages(prev => [...prev, "Upload finalizado com sucesso!"]);
     setIsBusy(false);
     setProgress(0);
   };
@@ -127,44 +109,28 @@ const App: React.FC = () => {
     if (!prompt.trim()) return;
     const userMsg: ChatMessage = { role: 'user', text: prompt };
     setChatHistory(prev => [...prev, userMsg]);
+    const currentPrompt = prompt;
     setPrompt('');
-    const response = await getCodeAssistance(prompt, activeFile.content);
+    const response = await getCodeAssistance(currentPrompt, activeFile.content);
     setChatHistory(prev => [...prev, { role: 'assistant', text: response }]);
   };
 
   const connectSerial = async () => {
     try {
-      if (!navigator.serial) {
-        alert("Web Serial API não suportada neste navegador.");
-        return;
-      }
+      if (!navigator.serial) { alert("Seu navegador não suporta Web Serial."); return; }
       const port = await navigator.serial.requestPort();
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setOutputMessages(prev => [...prev, "Porta Serial aberta."]);
+      setOutputMessages(prev => [...prev, "Conexão serial estabelecida."]);
       const reader = port.readable.getReader();
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         const text = new TextDecoder().decode(value);
-        setSerialMessages(prev => [...prev, { 
-          timestamp: new Date().toLocaleTimeString(), 
-          type: 'in', 
-          text 
-        }]);
+        setSerialMessages(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), type: 'in', text }]);
       }
-    } catch (err) {
-      console.error(err);
-      setIsConnected(false);
-    }
-  };
-
-  const handleResetData = () => {
-    if (confirm("Resetar todos os dados?")) {
-      localStorage.clear();
-      window.location.reload();
-    }
+    } catch (err) { setIsConnected(false); }
   };
 
   const highlightCode = (code: string) => {
@@ -174,221 +140,260 @@ const App: React.FC = () => {
       .replace(/\b(void|int|float|char|bool|long|unsigned|const|static|if|else|for|while|return|switch|case|break|byte|word|String)\b/g, `<span class="${isDark ? 'text-pink-400' : 'text-pink-600'} font-bold">$1</span>`)
       .replace(/\b(setup|loop|pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|Serial|println|print|begin|available|read|write|millis)\b/g, `<span class="${isDark ? 'text-teal-400' : 'text-teal-600'} font-bold">$1</span>`)
       .replace(/\/\/.*/g, `<span class="${isDark ? 'text-slate-500' : 'text-slate-400'} italic">$&</span>`)
-      .replace(/#\w+/g, `<span class="${isDark ? 'text-orange-400' : 'text-orange-600'}">$&</span>`)
       .replace(/"[^"]*"/g, `<span class="${isDark ? 'text-green-400' : 'text-green-700'}">$&</span>`)
       .replace(/\b(HIGH|LOW|INPUT|OUTPUT|INPUT_PULLUP|LED_BUILTIN)\b/g, `<span class="${isDark ? 'text-orange-300' : 'text-orange-500'} font-semibold">$1</span>`);
   };
 
-  const createNewFile = () => {
-    const name = `sketch_${Date.now()}.ino`;
-    setFiles([...files, { name, content: 'void setup() {} void loop() {}', isOpen: true }]);
-    setActiveFileIndex(files.length);
-  };
-
   const bgMain = theme === 'dark' ? 'bg-[#0b0e14]' : 'bg-[#f6f6f6]';
-  const bgToolbar = theme === 'dark' ? 'bg-[#1c1f24]' : 'bg-white shadow-sm';
-  const bgSidebar = theme === 'dark' ? 'bg-[#0b0e14]' : 'bg-white';
-  const bgActivityBar = theme === 'dark' ? 'bg-[#1c1f24]' : 'bg-[#f0f0f0]';
-  const bgEditor = theme === 'dark' ? 'bg-[#0d1117]' : 'bg-white';
-  const textMain = theme === 'dark' ? 'text-slate-300' : 'text-slate-800';
   const borderMain = theme === 'dark' ? 'border-white/5' : 'border-slate-200';
+  const bgEditor = theme === 'dark' ? 'bg-[#0d1117]' : 'bg-white';
+  const textTitle = theme === 'dark' ? 'text-slate-500' : 'text-slate-400';
 
   return (
-    <div className={`flex flex-col h-screen ${bgMain} ${textMain} font-sans overflow-hidden`}>
-      <header className={`h-12 border-b ${borderMain} flex items-center justify-between px-4 ${bgToolbar} shrink-0`}>
+    <div className={`flex flex-col h-screen ${bgMain} text-slate-300 font-sans overflow-hidden`}>
+      {/* Top Header */}
+      <header className={`h-12 border-b ${borderMain} flex items-center justify-between px-4 bg-[#1c1f24] shrink-0 z-50`}>
         <div className="flex items-center gap-4">
-          <Zap size={22} className="text-[#008184] mr-2" fill="currentColor" />
-          <div className="flex items-center gap-2">
-            <button onClick={handleVerify} disabled={isBusy} className="p-1.5 hover:text-teal-400 transition-colors"><Check size={20} /></button>
-            <button onClick={handleUpload} disabled={isBusy} className="p-1.5 hover:text-teal-400 transition-colors"><ArrowRight size={20} /></button>
+          <div className="flex items-center gap-1">
+            <Zap size={20} className="text-[#008184]" fill="currentColor" />
+            <span className="text-[10px] font-black tracking-tighter text-[#008184]">GEMINI IDE</span>
           </div>
-          <div className="border rounded-full px-4 py-1 flex items-center gap-2 bg-black/20">
-            <BoardIcon size={14} className="text-teal-500" />
-            <select value={selectedBoard.id} onChange={(e) => setSelectedBoard(BOARDS.find(b => b.id === e.target.value) || BOARDS[0])} className="bg-transparent text-[11px] font-bold appearance-none outline-none cursor-pointer">
+          <div className="h-6 w-[1px] bg-white/10 mx-2" />
+          <div className="flex items-center gap-1">
+            <button onClick={handleVerify} title="Verificar" disabled={isBusy} className="p-2 hover:bg-white/5 rounded-md text-slate-400 hover:text-teal-400 transition-all active:scale-95"><Check size={18} /></button>
+            <button onClick={handleUpload} title="Carregar" disabled={isBusy} className="p-2 hover:bg-white/5 rounded-md text-slate-400 hover:text-teal-400 transition-all active:scale-95"><ArrowRight size={18} /></button>
+          </div>
+          <div className="flex items-center gap-2 bg-black/30 border border-white/5 rounded-full pl-3 pr-2 py-1">
+            <BoardIcon size={12} className="text-teal-500" />
+            <select value={selectedBoard.id} onChange={(e) => setSelectedBoard(BOARDS.find(b => b.id === e.target.value) || BOARDS[0])} className="bg-transparent text-[10px] font-bold outline-none cursor-pointer text-slate-300">
               {BOARDS.map(b => <option key={b.id} value={b.id} className="bg-[#1c1f24]">{b.name}</option>)}
             </select>
           </div>
-          <button onClick={connectSerial} className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase transition-all ${isConnected ? 'bg-teal-500/10 text-teal-400' : 'bg-slate-500/10 text-slate-400'}`}>
-            {isConnected ? 'Porta Ativa' : 'Conectar Serial'}
+          <button onClick={connectSerial} className={`px-4 py-1 rounded-full text-[9px] font-black uppercase transition-all ${isConnected ? 'bg-teal-500 text-black' : 'bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+            {isConnected ? 'Porta Ativa' : 'Conectar Porta'}
           </button>
         </div>
         <div className="flex items-center gap-4">
-           <div className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/30 rounded-lg px-3 py-1">
-            <Sparkles size={14} className="text-teal-400"/>
-            <span className="text-[10px] text-teal-400 font-bold">IA Online</span>
+          <div className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 rounded-md px-2 py-1">
+            <Sparkles size={12} className="text-teal-400 animate-pulse"/>
+            <span className="text-[9px] text-teal-400 font-bold uppercase">IA Conectada</span>
           </div>
-          <Github size={20} className="text-slate-500 cursor-pointer hover:text-white transition-colors" />
+          <Github size={18} className="text-slate-600 hover:text-white cursor-pointer transition-colors" />
         </div>
       </header>
 
-      {progress > 0 && <div className="h-0.5 w-full bg-white/5"><div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${progress}%` }} /></div>}
+      {progress > 0 && <div className="h-[2px] w-full bg-white/5"><div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${progress}%` }} /></div>}
 
       <div className="flex flex-1 overflow-hidden">
-        <nav className={`w-14 border-r ${borderMain} ${bgActivityBar} flex flex-col items-center py-6 gap-6 shrink-0`}>
+        {/* Activity Bar (Vertical) */}
+        <nav className={`w-14 border-r ${borderMain} bg-[#1c1f24] flex flex-col items-center py-4 gap-4 shrink-0`}>
           {[
-            { id: 'files', icon: Files },
-            { id: 'boards', icon: Layers },
-            { id: 'libraries', icon: Box },
-            { id: 'examples', icon: BookOpen },
-            { id: 'ai', icon: MessageSquare },
+            { id: 'files', icon: Files, label: 'Arquivos' },
+            { id: 'ai', icon: MessageSquare, label: 'Gemini' },
+            { id: 'libraries', icon: Box, label: 'Bibliotecas' },
+            { id: 'examples', icon: BookOpen, label: 'Exemplos' },
+            { id: 'settings', icon: Settings, label: 'Ajustes' },
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as TabType)} className={`p-2.5 rounded-xl transition-all ${activeTab === tab.id ? 'text-teal-400 bg-teal-400/10' : 'text-slate-500 hover:text-slate-300'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as TabType)} className={`group relative p-3 rounded-xl transition-all ${activeTab === tab.id ? 'text-teal-400 bg-teal-400/10' : 'text-slate-600 hover:text-slate-300'}`}>
               <tab.icon size={22}/>
+              {activeTab === tab.id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-500 rounded-r-full" />}
+              <span className="absolute left-16 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">{tab.label}</span>
             </button>
           ))}
-          <button onClick={() => setActiveTab('settings')} className={`mt-auto mb-4 p-2.5 rounded-xl ${activeTab === 'settings' ? 'text-teal-400 bg-teal-400/10' : 'text-slate-500'}`}><Settings size={22}/></button>
         </nav>
 
-        <aside className={`w-72 border-r ${borderMain} ${bgSidebar} flex flex-col shrink-0`}>
-          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-black/10">
-            <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{activeTab}</span>
-            {activeTab === 'files' && <Plus size={14} className="cursor-pointer" onClick={createNewFile}/>}
+        {/* Sidebar Panel */}
+        <aside className={`w-72 border-r ${borderMain} bg-[#0b0e14] flex flex-col shrink-0 overflow-hidden`}>
+          <div className="h-10 px-4 border-b border-white/5 flex justify-between items-center bg-black/10">
+            <span className={`text-[10px] font-black uppercase tracking-widest ${textTitle}`}>{activeTab}</span>
+            {activeTab === 'files' && <Plus size={14} className="cursor-pointer hover:text-white" onClick={() => {
+              const name = `sketch_${Date.now().toString().slice(-4)}.ino`;
+              setFiles([...files, { name, content: 'void setup() {\n  \n}\n\nvoid loop() {\n  \n}', isOpen: true }]);
+              setActiveFileIndex(files.length);
+            }}/>}
           </div>
+          
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {activeTab === 'files' && (
               <div className="p-2 space-y-1">
                 {files.map((file, idx) => (
-                  <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer ${activeFileIndex === idx ? 'bg-teal-500/10 text-teal-400' : 'hover:bg-white/5 text-slate-400'}`}>
-                    <FileCode size={16}/> <span className="text-xs truncate">{file.name}</span>
+                  <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`flex items-center justify-between group px-3 py-2 rounded-lg cursor-pointer ${activeFileIndex === idx ? 'bg-teal-500/10 text-teal-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                    <div className="flex items-center gap-2 truncate">
+                      <FileCode size={16} className={activeFileIndex === idx ? 'text-teal-400' : 'text-slate-600'}/>
+                      <span className="text-xs truncate">{file.name}</span>
+                    </div>
+                    {files.length > 1 && (
+                      <X size={12} className="opacity-0 group-hover:opacity-100 hover:text-red-400" onClick={(e) => {
+                        e.stopPropagation();
+                        const newFiles = files.filter((_, i) => i !== idx);
+                        setFiles(newFiles);
+                        setActiveFileIndex(0);
+                      }}/>
+                    )}
                   </div>
                 ))}
               </div>
             )}
-            {activeTab === 'settings' && (
-              <div className="p-6 space-y-6">
-                <div className="space-y-4">
-                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider"><Monitor size={14}/> Tema</div>
-                   <div className="grid grid-cols-2 gap-2">
-                     <button onClick={() => setTheme('dark')} className={`py-2 rounded text-[10px] font-bold border transition-all ${theme === 'dark' ? 'border-teal-500 text-teal-400' : 'border-white/5'}`}>Dark</button>
-                     <button onClick={() => setTheme('light')} className={`py-2 rounded text-[10px] font-bold border transition-all ${theme === 'light' ? 'border-teal-500 text-teal-600' : 'border-white/5'}`}>Light</button>
-                   </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider"><FontIcon size={14}/> Fonte</div>
-                  <input type="range" min="10" max="24" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-full accent-teal-500 h-1 bg-white/10 rounded-full appearance-none"/>
-                </div>
-                <div className="pt-6 border-t border-white/5">
-                   <p className="text-[10px] text-slate-500 font-bold mb-4 uppercase">Desenvolvedor</p>
-                   <div className="flex items-center gap-3">
-                     <Instagram size={18} className="text-pink-500"/>
-                     <span className="text-[10px] font-black text-teal-500">@josehebertot2</span>
-                   </div>
-                </div>
-                <button onClick={handleResetData} className="w-full py-2 border border-red-500/20 text-red-500 rounded text-[10px] font-bold hover:bg-red-500 hover:text-white transition-all">Resetar IDE</button>
-              </div>
-            )}
+            
             {activeTab === 'ai' && (
               <div className="h-full flex flex-col">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar text-[11px]">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 text-[11px] custom-scrollbar">
                   {chatHistory.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-center p-4 opacity-50">
-                      <Sparkles size={32} className="mb-2 text-teal-500"/>
-                      <p className="text-xs font-bold uppercase tracking-widest">Assistente IA</p>
-                      <p className="text-[10px] mt-1">Como posso ajudar com seu código Arduino hoje?</p>
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-30 px-6">
+                      <Sparkles size={32} className="mb-4 text-teal-500"/>
+                      <p className="font-bold">Assistente Gemini</p>
+                      <p className="text-[10px] mt-2 leading-relaxed">Peça ajuda com o código, pinagem ou lógica do seu projeto.</p>
                     </div>
                   )}
                   {chatHistory.map((msg, i) => (
                     <div key={i} className={`p-3 rounded-xl border ${msg.role === 'user' ? 'bg-white/5 border-white/5' : 'bg-teal-500/5 border-teal-500/20'}`}>
-                      <div className="text-[8px] font-black uppercase mb-1 opacity-50">{msg.role === 'user' ? 'Você' : 'Gemini AI'}</div>
-                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                      <div className="text-[8px] font-black uppercase mb-1 opacity-50 flex items-center gap-1">
+                        {msg.role === 'user' ? <Monitor size={8}/> : <Sparkles size={8}/>}
+                        {msg.role === 'user' ? 'Você' : 'Gemini AI'}
+                      </div>
+                      <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                     </div>
                   ))}
                 </div>
-                <div className="p-4 border-t border-white/5 bg-black/20">
+                <div className="p-3 bg-black/40 border-t border-white/5">
                   <div className="relative">
-                    <textarea value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAskAI())} placeholder="Pergunte ao Gemini..." className="w-full bg-[#1c1f24] border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-teal-500/50 resize-none h-20 custom-scrollbar" />
+                    <textarea 
+                      value={prompt} 
+                      onChange={e => setPrompt(e.target.value)} 
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAskAI())}
+                      placeholder="Como posso ajudar?" 
+                      className="w-full bg-[#1c1f24] border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-teal-500/50 resize-none h-20 custom-scrollbar" 
+                    />
                     <button onClick={handleAskAI} className="absolute bottom-3 right-3 p-1.5 bg-teal-500 text-black rounded-lg hover:bg-teal-400 transition-all"><Wand2 size={14} /></button>
                   </div>
                 </div>
               </div>
             )}
-            {activeTab === 'examples' && (
-               <div className="p-2 space-y-1">
-                 {EXAMPLES.map((ex, i) => (
-                   <div key={i} onClick={() => setFiles([...files, { name: ex.name + '.ino', content: ex.content, isOpen: true }])} className="p-3 rounded-lg hover:bg-white/5 cursor-pointer border border-transparent hover:border-teal-500/20">
-                     <p className="text-[9px] font-black text-teal-500 uppercase">{ex.category}</p>
-                     <p className="text-xs font-bold">{ex.name}</p>
-                   </div>
-                 ))}
-               </div>
-            )}
+
             {activeTab === 'libraries' && (
               <div className="p-4 space-y-4">
+                 <div className="relative mb-2">
+                   <input type="text" placeholder="Buscar bibliotecas..." className="w-full bg-white/5 border border-white/5 rounded-md px-8 py-2 text-[10px] outline-none focus:border-teal-500/50" />
+                   <Search size={12} className="absolute left-3 top-2.5 text-slate-600" />
+                 </div>
                  {LIBRARIES.map((lib, i) => (
-                   <div key={i} className="p-3 rounded-xl border border-white/5 bg-white/5">
-                      <p className="text-[11px] font-bold text-teal-400">{lib.name}</p>
-                      <p className="text-[9px] text-slate-500 mt-1">{lib.description}</p>
+                   <div key={i} className="p-3 rounded-xl border border-white/5 bg-white/5 group hover:border-teal-500/30 transition-all">
+                      <div className="flex justify-between items-start">
+                        <p className="text-[11px] font-bold text-teal-400">{lib.name}</p>
+                        <span className="text-[8px] bg-white/5 px-1 rounded text-slate-500">v{lib.version}</span>
+                      </div>
+                      <p className="text-[9px] text-slate-500 mt-1 leading-relaxed">{lib.description}</p>
                       <button onClick={() => {
                         const newFiles = [...files];
-                        newFiles[activeFileIndex].content = lib.header + "\n" + newFiles[activeFileIndex].content;
-                        setFiles(newFiles);
-                      }} className="mt-2 w-full py-1 bg-teal-500/10 text-teal-500 rounded text-[9px] font-bold hover:bg-teal-500 hover:text-black">Instalar</button>
+                        if (!newFiles[activeFileIndex].content.includes(lib.header)) {
+                          newFiles[activeFileIndex].content = lib.header + "\n" + newFiles[activeFileIndex].content;
+                          setFiles(newFiles);
+                        }
+                      }} className="mt-3 w-full py-1.5 bg-teal-500/10 text-teal-500 rounded text-[9px] font-black uppercase hover:bg-teal-500 hover:text-black transition-all">Instalar no Sketch</button>
                    </div>
                  ))}
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="p-6 space-y-8">
+                <div className="space-y-4">
+                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Monitor size={14}/> Tema</div>
+                   <div className="grid grid-cols-2 gap-2">
+                     <button onClick={() => setTheme('dark')} className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${theme === 'dark' ? 'border-teal-500 bg-teal-500/10 text-teal-400' : 'border-white/5 text-slate-600'}`}>Escuro</button>
+                     <button onClick={() => setTheme('light')} className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${theme === 'light' ? 'border-teal-500 bg-teal-500/10 text-teal-600' : 'border-white/5 text-slate-600'}`}>Claro</button>
+                   </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><FontIcon size={14}/> Tamanho da Fonte</div>
+                  <div className="flex items-center gap-4">
+                    <input type="range" min="10" max="24" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="flex-1 accent-teal-500 h-1 bg-white/10 rounded-full appearance-none"/>
+                    <span className="text-xs font-mono text-teal-500">{fontSize}px</span>
+                  </div>
+                </div>
+                <div className="pt-8 border-t border-white/5 space-y-4">
+                   <button onClick={() => { if(confirm("Isso apagará todos os seus arquivos salvos. Continuar?")) { localStorage.clear(); window.location.reload(); } }} className="w-full py-2 border border-red-500/20 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-500 hover:text-white transition-all">Limpar Tudo</button>
+                   <div className="flex flex-col items-center gap-3 py-4 opacity-50">
+                     <Instagram size={20} className="text-pink-500"/>
+                     <span className="text-[10px] font-black text-teal-500 tracking-tighter">@JOSEHEBERTOT2</span>
+                   </div>
+                </div>
               </div>
             )}
           </div>
         </aside>
 
+        {/* Main Editor Area */}
         <main className={`flex-1 flex flex-col ${bgEditor} relative`}>
-          <div className="h-9 bg-black/20 border-b border-white/5 flex items-center px-2 overflow-x-auto no-scrollbar shrink-0">
+          {/* File Tabs */}
+          <div className="h-9 bg-black/30 border-b border-white/5 flex items-center px-2 overflow-x-auto no-scrollbar shrink-0">
             {files.map((file, idx) => (
-              <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`h-full flex items-center px-4 text-[11px] font-medium cursor-pointer border-r border-white/5 gap-3 ${activeFileIndex === idx ? 'bg-[#0d1117] text-teal-400' : 'text-slate-500 hover:text-slate-400'}`}>
+              <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`h-full flex items-center px-4 text-[11px] font-medium cursor-pointer border-r border-white/5 gap-3 transition-colors ${activeFileIndex === idx ? 'bg-[#0d1117] text-teal-400 border-t-2 border-t-teal-500' : 'text-slate-600 hover:text-slate-400'}`}>
                 <FileCode size={12}/> {file.name}
-                {files.length > 1 && <X size={10} className="hover:text-red-400" onClick={(e) => { e.stopPropagation(); setFiles(files.filter((_, i) => i !== idx)); setActiveFileIndex(0); }}/>}
               </div>
             ))}
           </div>
 
+          {/* Editor Container */}
           <div className="flex-1 relative overflow-hidden group">
-            {showLineNumbers && (
-              <div className="absolute left-0 top-0 w-10 h-full bg-black/10 border-r border-white/5 py-5 flex flex-col items-center text-slate-600 font-mono select-none" style={{ fontSize: `${fontSize}px`, lineHeight: `${fontSize * 1.5}px` }}>
-                {activeFile.content.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
-              </div>
-            )}
-            <div className="ml-10 h-full relative">
+            {/* Gutter / Line Numbers */}
+            <div className="absolute left-0 top-0 w-12 h-full bg-black/10 border-r border-white/5 py-5 flex flex-col items-center text-slate-700 font-mono select-none" style={{ fontSize: `${fontSize}px`, lineHeight: `${fontSize * 1.5}px` }}>
+              {activeFile.content.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
+            </div>
+            
+            <div className="ml-12 h-full relative">
+               {/* Syntax Highlight Overlay */}
                <div ref={highlightRef} className="absolute inset-0 p-5 pointer-events-none code-font whitespace-pre overflow-hidden z-0" 
-                    style={{ fontSize: `${fontSize}px`, lineHeight: `${fontSize * 1.5}px` }}
+                    style={{ fontSize: `${fontSize}px`, lineHeight: `${fontSize * 1.5}px`, color: theme === 'dark' ? '#d1d5db' : '#1f2937' }}
                     dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }} />
+               
+               {/* Invisible Textarea for Editing */}
                <textarea 
                   value={activeFile.content} 
                   onChange={e => { const newFiles = [...files]; newFiles[activeFileIndex].content = e.target.value; setFiles(newFiles); }} 
                   onScroll={(e) => { if (highlightRef.current) { highlightRef.current.scrollTop = e.currentTarget.scrollTop; highlightRef.current.scrollLeft = e.currentTarget.scrollLeft; } }}
                   spellCheck={false}
+                  autoFocus
                   style={{ fontSize: `${fontSize}px`, lineHeight: `${fontSize * 1.5}px` }}
-                  className="absolute inset-0 w-full h-full p-5 bg-transparent text-transparent caret-teal-400 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar"
+                  className="absolute inset-0 w-full h-full p-5 bg-transparent text-transparent caret-teal-400 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none"
                />
-               <button onClick={() => downloadFile(activeFile)} className="absolute top-4 right-6 p-2 bg-black/60 hover:bg-teal-500 hover:text-black rounded-lg text-slate-400 border border-white/10 opacity-0 group-hover:opacity-100 transition-all z-20"><Save size={16}/></button>
+
+               {/* Editor Actions Overlay */}
+               <div className="absolute top-4 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
+                 <button onClick={() => downloadFile(activeFile)} className="p-2 bg-black/60 hover:bg-teal-500 hover:text-black rounded-lg text-slate-400 border border-white/10" title="Baixar .ino"><Download size={16}/></button>
+               </div>
             </div>
           </div>
 
+          {/* Console / Output Area */}
           <div className={`h-48 border-t ${borderMain} bg-black/20 flex flex-col shrink-0`}>
-            <div className="h-8 border-b border-white/5 flex items-center justify-between px-4 bg-black/20 shrink-0">
-              <div className="flex gap-4 h-full">
-                <button onClick={() => setConsoleTab('output')} className={`text-[10px] font-black uppercase px-2 h-full transition-all border-b ${consoleTab === 'output' ? 'text-teal-500 border-teal-500' : 'text-slate-500 border-transparent'}`}>Output</button>
-                <button onClick={() => setConsoleTab('serial')} className={`text-[10px] font-black uppercase px-2 h-full transition-all border-b ${consoleTab === 'serial' ? 'text-teal-500 border-teal-500' : 'text-slate-500 border-transparent'}`}>Serial</button>
+            <div className="h-9 border-b border-white/5 flex items-center justify-between px-4 bg-black/20 shrink-0">
+              <div className="flex gap-6 h-full">
+                <button onClick={() => setConsoleTab('output')} className={`text-[10px] font-black uppercase px-2 h-full flex items-center gap-2 border-b-2 transition-all ${consoleTab === 'output' ? 'text-teal-500 border-teal-500' : 'text-slate-600 border-transparent'}`}><TerminalIcon size={12}/> Saída</button>
+                <button onClick={() => setConsoleTab('serial')} className={`text-[10px] font-black uppercase px-2 h-full flex items-center gap-2 border-b-2 transition-all ${consoleTab === 'serial' ? 'text-teal-500 border-teal-500' : 'text-slate-600 border-transparent'}`}><Monitor size={12}/> Serial Monitor</button>
               </div>
-              <button onClick={() => consoleTab === 'output' ? setOutputMessages([]) : setSerialMessages([])} className="text-[10px] text-slate-500 hover:text-teal-500"><RotateCcw size={12}/></button>
+              <button onClick={() => consoleTab === 'output' ? setOutputMessages([]) : setSerialMessages([])} className="text-slate-600 hover:text-teal-500 transition-colors p-1" title="Limpar console"><Trash2 size={14}/></button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] custom-scrollbar bg-black/40">
+            
+            <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] custom-scrollbar bg-black/30">
               {consoleTab === 'output' ? (
                 <div className="space-y-1">
                   {outputMessages.map((m, i) => (
-                    <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}>
-                      <span className="opacity-30 mr-2">&gt;</span> {m}
+                    <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>
+                      <span className="opacity-10 mr-2 select-none">&gt;</span> {m}
                     </div>
                   ))}
-                  {outputMessages.length === 0 && <div className="text-slate-400 italic">Console vazio.</div>}
+                  {outputMessages.length === 0 && <div className="text-slate-700 italic text-[10px]">Sem novas mensagens de saída.</div>}
                 </div>
               ) : (
                 <div className="space-y-1">
                   {serialMessages.map((msg, i) => (
                     <div key={i} className="flex gap-4">
-                      <span className="text-slate-600">[{msg.timestamp}]</span>
+                      <span className="text-slate-700 select-none">[{msg.timestamp}]</span>
                       <span className="text-teal-500">{msg.text}</span>
                     </div>
                   ))}
-                  {serialMessages.length === 0 && <div className="text-slate-400 italic">Nenhum dado serial recebido.</div>}
+                  {serialMessages.length === 0 && <div className="text-slate-700 italic text-[10px]">Aguardando dados seriais em 9600 baud...</div>}
                 </div>
               )}
               <div ref={consoleEndRef} />
@@ -397,14 +402,16 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      <footer className="h-6 bg-[#008184] text-white flex items-center justify-between px-4 text-[9px] font-black uppercase shrink-0">
+      {/* Footer Status Bar */}
+      <footer className="h-6 bg-[#008184] text-white flex items-center justify-between px-4 text-[9px] font-black uppercase shrink-0 select-none">
          <div className="flex gap-6">
-           <span className="flex items-center gap-1"><BoardIcon size={12}/> {selectedBoard.name}</span>
-           <span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-white animate-pulse' : 'bg-white/20'}`} /> {isConnected ? 'Porta Serial Conectada' : 'Desconectado'}</span>
+           <span className="flex items-center gap-1.5"><BoardIcon size={11}/> {selectedBoard.name}</span>
+           <span className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-white animate-pulse' : 'bg-white/20'}`} /> {isConnected ? 'USB Conectado' : 'Aguardando Porta Serial'}</span>
          </div>
-         <div className="flex gap-6">
-           <span>Linha {activeFile.content.split('\n').length}</span>
-           <span>v2.1.5-Stable</span>
+         <div className="flex gap-6 opacity-80">
+           <span>{activeFile.name}</span>
+           <span className="font-mono">LN: {activeFile.content.split('\n').length} | COL: 0</span>
+           <span>UTF-8 | LF</span>
          </div>
       </footer>
     </div>
