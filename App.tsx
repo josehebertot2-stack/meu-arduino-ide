@@ -378,6 +378,7 @@ const App: React.FC = () => {
                       <span className="opacity-30 mr-2">&gt;</span> {m}
                     </div>
                   ))}
+                  {outputMessages.length === 0 && <div className="text-slate-400 italic">Console vazio.</div>}
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -387,6 +388,7 @@ const App: React.FC = () => {
                       <span className="text-teal-500">{msg.text}</span>
                     </div>
                   ))}
+                  {serialMessages.length === 0 && <div className="text-slate-400 italic">Nenhum dado serial recebido.</div>}
                 </div>
               )}
               <div ref={consoleEndRef} />
