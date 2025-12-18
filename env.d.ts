@@ -1,11 +1,5 @@
 
-interface Window {
-  // Fix: Added '?' to make aistudio optional to match other declarations in the environment
-  aistudio?: {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  };
-}
+interface Window {}
 
 interface Navigator {
   serial: {

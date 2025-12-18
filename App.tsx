@@ -52,7 +52,6 @@ const App: React.FC = () => {
   const [isBusy, setIsBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [selectedBoard, setSelectedBoard] = useState(BOARDS[0]);
-  const [hasApiKey, setHasApiKey] = useState(true);
   
   const [fontSize, setFontSize] = useState(14);
   const [showLineNumbers] = useState(true);
@@ -64,18 +63,6 @@ const App: React.FC = () => {
   const activeFile = useMemo(() => files[activeFileIndex] || files[0], [files, activeFileIndex]);
 
   useEffect(() => {
-    const checkApiKey = async () => {
-      try {
-        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          setHasApiKey(hasKey);
-        }
-      } catch (e) {
-        console.warn("AI Studio key manager not available");
-      }
-    };
-    checkApiKey();
-    
     localStorage.setItem('arduino_ide_files', JSON.stringify(files));
     localStorage.setItem('arduino_theme', theme);
   }, [files, theme]);
@@ -83,19 +70,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (consoleEndRef.current) consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [serialMessages, outputMessages]);
-
-  const handleOpenKeySelector = async () => {
-    try {
-      if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-        await window.aistudio.openSelectKey();
-        setHasApiKey(true);
-      } else {
-        alert("Gerenciador de chaves não disponível.");
-      }
-    } catch (e) {
-      console.error("Failed to open key selector", e);
-    }
-  };
 
   const downloadFile = (file: FileNode) => {
     const blob = new Blob([file.content], { type: 'text/plain' });
@@ -219,7 +193,6 @@ const App: React.FC = () => {
   const bgEditor = theme === 'dark' ? 'bg-[#0d1117]' : 'bg-white';
   const textMain = theme === 'dark' ? 'text-slate-300' : 'text-slate-800';
   const borderMain = theme === 'dark' ? 'border-white/5' : 'border-slate-200';
-  const bgConsole = theme === 'dark' ? 'bg-[#0b0e14]' : 'bg-white';
 
   return (
     <div className={`flex flex-col h-screen ${bgMain} ${textMain} font-sans overflow-hidden`}>
@@ -240,13 +213,13 @@ const App: React.FC = () => {
             {isConnected ? 'Porta Ativa' : 'Conectar Serial'}
           </button>
         </div>
-        {!hasApiKey && (
-          <div onClick={handleOpenKeySelector} className="bg-orange-500/10 border border-orange-500/30 rounded-lg px-3 py-1 cursor-pointer flex items-center gap-2 animate-pulse">
-            <AlertTriangle size={14} className="text-orange-400"/>
-            <span className="text-[10px] text-orange-400 font-bold">IA Offline: Configure sua chave de API</span>
+        <div className="flex items-center gap-4">
+           <div className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/30 rounded-lg px-3 py-1">
+            <Sparkles size={14} className="text-teal-400"/>
+            <span className="text-[10px] text-teal-400 font-bold">IA Online</span>
           </div>
-        )}
-        <Github size={20} className="text-slate-500 cursor-pointer hover:text-white transition-colors" />
+          <Github size={20} className="text-slate-500 cursor-pointer hover:text-white transition-colors" />
+        </div>
       </header>
 
       {progress > 0 && <div className="h-0.5 w-full bg-white/5"><div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${progress}%` }} /></div>}
@@ -284,7 +257,6 @@ const App: React.FC = () => {
             )}
             {activeTab === 'settings' && (
               <div className="p-6 space-y-6">
-                <button onClick={handleOpenKeySelector} className="w-full py-2 bg-teal-500 text-black rounded text-[10px] font-black uppercase hover:bg-teal-400 transition-all">Configurar Chave API</button>
                 <div className="space-y-4">
                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider"><Monitor size={14}/> Tema</div>
                    <div className="grid grid-cols-2 gap-2">
@@ -309,6 +281,13 @@ const App: React.FC = () => {
             {activeTab === 'ai' && (
               <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar text-[11px]">
+                  {chatHistory.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-4 opacity-50">
+                      <Sparkles size={32} className="mb-2 text-teal-500"/>
+                      <p className="text-xs font-bold uppercase tracking-widest">Assistente IA</p>
+                      <p className="text-[10px] mt-1">Como posso ajudar com seu código Arduino hoje?</p>
+                    </div>
+                  )}
                   {chatHistory.map((msg, i) => (
                     <div key={i} className={`p-3 rounded-xl border ${msg.role === 'user' ? 'bg-white/5 border-white/5' : 'bg-teal-500/5 border-teal-500/20'}`}>
                       <div className="text-[8px] font-black uppercase mb-1 opacity-50">{msg.role === 'user' ? 'Você' : 'Gemini AI'}</div>
