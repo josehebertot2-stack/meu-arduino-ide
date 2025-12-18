@@ -1,5 +1,5 @@
 {
-  "name": "Arduino Gemini IDE Web",
+  "name": "ArduProgram IDE",
   "description": "IDE Arduino Web moderna com IA Gemini, Monitor Serial (Web Serial API) e Temas. Programe seu Arduino diretamente do navegador sem instalações. Desenvolvido por José Heberto Torres da Costa.",
   "requestFramePermissions": [
     "serial"

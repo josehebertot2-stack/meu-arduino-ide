@@ -1,5 +1,4 @@
-
-# 🚀 Arduino Gemini Web IDE
+# 🚀 ArduProgram IDE
 
 > **Descrição para o Repositório:** IDE Arduino Web moderna com IA Gemini, Monitor Serial (Web Serial API) e Temas. Programe seu Arduino diretamente do navegador sem instalações. Desenvolvido por José Heberto Torres da Costa.
 
@@ -18,10 +17,10 @@ Uma IDE do Arduino poderosa, moderna e totalmente baseada na web. Desenvolvida p
 
 ## 🚀 Como fazer o Deploy
 
-Este projeto está pronto para ser hospedado na **Vercel**, **Netlify** ou **GitHub Pages**.
+Este projeto está pronto para ser hospedado na **Netlify** ou **Vercel**.
 
 1. Faça o upload dos arquivos para um repositório no GitHub.
-2. Conecte o repositório à **Vercel**.
+2. Conecte o repositório ao **Netlify**.
 3. **Importante:** Adicione a Variável de Ambiente:
    - **Key:** `API_KEY`
    - **Value:** Sua chave do [Google AI Studio](https://aistudio.google.com/app/apikey).
