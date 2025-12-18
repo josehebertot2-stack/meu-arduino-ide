@@ -13,7 +13,7 @@ import { getCodeAssistance, analyzeCode } from './services/geminiService';
 // --- LOCALIZATION DICTIONARY ---
 const TRANSLATIONS = {
   pt: {
-    ide_name: "ArduProgram",
+    ide_name: "ARDUPROGRAM",
     nav_files: "Gerenciador",
     nav_ai: "IA Assistente",
     nav_libs: "Bibliotecas",
@@ -48,7 +48,7 @@ const TRANSLATIONS = {
     creator_bio: "Engenheiro de Sistemas focado em facilitar o acesso à eletrônica via Web."
   },
   en: {
-    ide_name: "ArduProgram",
+    ide_name: "ARDUPROGRAM",
     nav_files: "Explorer",
     nav_ai: "AI Assistant",
     nav_libs: "Libraries",
@@ -184,9 +184,7 @@ const App: React.FC = () => {
     setIsChatLoading(true);
 
     try {
-      // Prompt adjustment to respect language
-      const langInstruction = lang === 'pt' ? "Responda em Português." : "Respond in English.";
-      const response = await getCodeAssistance(`${langInstruction}\n${userMsg}`, aiContext ? activeFile.content : "");
+      const response = await getCodeAssistance(userMsg, aiContext ? activeFile.content : "");
       setChatHistory(prev => [...prev, { role: 'assistant', text: response }]);
     } catch (err) {
       setChatHistory(prev => [...prev, { role: 'assistant', text: lang === 'pt' ? "Erro na conexão." : "Connection error." }]);
@@ -270,7 +268,9 @@ const App: React.FC = () => {
              <div className="p-1.5 bg-[#2563eb] rounded-lg shadow-lg shadow-blue-500/20">
                 <Zap size={18} className="text-white" fill="currentColor" />
              </div>
-             <span className="font-extrabold text-[15px] tracking-tight uppercase">{t.ide_name} <span className="text-[#2563eb]">IDE</span></span>
+             <span className="font-extrabold text-[15px] tracking-tight uppercase text-[#2563eb] flex items-center">
+                {t.ide_name} <span className="ml-5">IDE</span>
+             </span>
           </div>
           
           <div className="flex items-center gap-1.5 border-l pl-3 border-white/5">

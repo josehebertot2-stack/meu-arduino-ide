@@ -6,10 +6,12 @@ import { GoogleGenAI, Type } from "@google/genai";
  */
 export const getCodeAssistance = async (prompt: string, currentCode: string) => {
   try {
+    // A chave API é obtida automaticamente do ambiente via process.env.API_KEY.
+    // Isso garante segurança e conformidade com as diretrizes da plataforma.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `Contexto do código Arduino atual:\n\`\`\`cpp\n${currentCode}\n\`\`\`\n\nPergunta do usuário: ${prompt}`,
       config: {
         systemInstruction: `Você é o "Arduino Gemini Master", um assistente especialista em hardware, C++ para microcontroladores e eletrônica.
@@ -20,7 +22,7 @@ export const getCodeAssistance = async (prompt: string, currentCode: string) => 
         3. Ajudar a depurar erros de compilação ou lógica.
         
         Diretrizes de Resposta:
-        - Responda SEMPRE em Português Brasileiro.
+        - Responda SEMPRE no mesmo idioma da pergunta do usuário (Português ou Inglês).
         - Se o usuário pedir um código, use blocos de código markdown com a tag 'cpp'.
         - Seja direto e técnico, mas didático.
         - Sugira o uso de bibliotecas padrão quando apropriado.`,
@@ -32,7 +34,7 @@ export const getCodeAssistance = async (prompt: string, currentCode: string) => 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     if (error.message?.includes("API key")) {
-      return "Erro: Chave de API não configurada corretamente no ambiente.";
+      return "Erro: Chave de API não configurada corretamente ou projeto sem faturamento ativo.";
     }
     return `Erro ao consultar a IA: ${error.message || "Erro desconhecido"}`;
   }
@@ -70,7 +72,7 @@ export const analyzeCode = async (code: string) => {
           },
           required: ["status", "summary", "issues"],
         },
-        systemInstruction: "Você é um compilador humano de Arduino. Analise o código estaticamente e identifique bugs, vazamentos de memória ou má práticas. Retorne apenas JSON.",
+        systemInstruction: "Você é um compilador humano de Arduino. Analise o código estaticamente e identifique bugs, vazamentos de memória ou má práticas. Retorne apenas JSON no idioma correspondente.",
       },
     });
 
