@@ -1,4 +1,3 @@
-
 export interface FileNode {
   name: string;
   content: string;
@@ -11,8 +10,7 @@ export interface ChatMessage {
   code?: string;
 }
 
-// Added 'settings' to the TabType union to allow correct type checking in the UI
-export type TabType = 'files' | 'ai' | 'examples' | 'boards' | 'libraries' | 'debug' | 'creator' | 'settings';
+export type TabType = 'files' | 'examples' | 'boards' | 'libraries' | 'debug' | 'creator' | 'settings';
 
 export interface SerialMessage {
   timestamp: string;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Files, Plus, Zap, Check, FileCode, Settings, X, 
@@ -8,6 +7,7 @@ import {
   WrapText, Save, Globe
 } from 'lucide-react';
 import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary } from './types';
+import { analyzeCode } from './services/geminiService';
 
 const TRANSLATIONS = {
   pt: {
@@ -119,7 +119,7 @@ const App: React.FC = () => {
   const [activeFileIndex, setActiveFileIndex] = useState(0);
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
   const [serialInput, setSerialInput] = useState('');
-  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE inicializada com sucesso."]);
+  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE iniciada com sucesso (Modo Offline)."]);
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -155,11 +155,12 @@ const App: React.FC = () => {
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `[LOG] ${t.msg_compiling} (${activeFile.name})`]);
     
-    // Simulação local de verificação de sintaxe
+    const result = await analyzeCode(activeFile.content);
+    
     setTimeout(() => {
-      setOutputMessages(prev => [...prev, `[INFO] ${t.msg_success}`]);
+      setOutputMessages(prev => [...prev, `[${result.status}] ${result.summary}`]);
       setIsBusy(false);
-    }, 1500);
+    }, 1000);
   };
 
   const connectSerial = async () => {
@@ -172,7 +173,7 @@ const App: React.FC = () => {
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setOutputMessages(prev => [...prev, `[SERIAL] Conectado na porta serial.`]);
+      setOutputMessages(prev => [...prev, `[SERIAL] Conectado na porta USB.`]);
 
       const reader = port.readable.getReader();
       while (true) {
@@ -414,7 +415,7 @@ const App: React.FC = () => {
          <div className="flex gap-6 opacity-80">
            <span>{t.footer_lines}: {(activeFile.content || '').split('\n').length}</span>
            <span>{t.footer_chars}: {activeFile.content.length}</span>
-           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Save size={10}/> Local Mode</span>
+           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Save size={10}/> Modo Local</span>
          </div>
       </footer>
     </div>
