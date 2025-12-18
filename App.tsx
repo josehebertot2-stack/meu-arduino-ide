@@ -33,7 +33,7 @@ const TRANSLATIONS = {
     settings_lang: "Idioma da IDE",
     ai_welcome_title: "Assistente Gemini",
     ai_welcome_desc: "Peça ajuda com circuitos ou lógica de programação Arduino.",
-    ai_placeholder: "Perguntar ao Gemini...",
+    ai_placeholder: "Digite aqui para a IA...",
     serial_placeholder: "Comando Serial...",
     terminal_tab: "Terminal",
     serial_tab: "Monitor Serial",
@@ -123,7 +123,7 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[lang];
 
-  const [activeTab, setActiveTab] = useState<TabType>('files');
+  const [activeTab, setActiveTab] = useState<TabType>('ai'); // Defaulting to AI for user convenience
   const [files, setFiles] = useState<FileNode[]>(() => {
     try {
       const saved = localStorage.getItem('ardu_files');
@@ -388,15 +388,6 @@ const App: React.FC = () => {
             {activeTab === 'ai' && (
               <div className="flex flex-col h-full bg-[#0f172a]">
                 <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
-                  {chatHistory.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-10 opacity-30">
-                      <div className="p-4 bg-blue-500/10 rounded-full mb-4">
-                         <Sparkles size={32} className="text-[#2563eb]" />
-                      </div>
-                      <h4 className="font-bold text-sm mb-1 text-white">{t.ai_welcome_title}</h4>
-                      <p className="text-[11px] px-8">{t.ai_welcome_desc}</p>
-                    </div>
-                  )}
                   {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                       <div className={`max-w-[90%] rounded-2xl p-4 text-[12px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-[#2563eb] text-white' : 'bg-[#1e293b] text-slate-300 border border-white/5'}`}>
@@ -408,9 +399,21 @@ const App: React.FC = () => {
                   <div ref={chatEndRef} />
                 </div>
                 <div className="p-4 border-t border-white/5 bg-[#0f172a]">
-                  <div className="flex gap-2">
-                    <input value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder={t.ai_placeholder} className="flex-1 bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-[12px] text-white outline-none focus:border-[#2563eb] transition-all" />
-                    <button onClick={handleSendMessage} className="p-2.5 bg-[#2563eb] text-white rounded-xl hover:scale-105 transition-all"><Send size={16} /></button>
+                  <div className="flex gap-2 items-center bg-[#1e293b] rounded-xl border border-white/10 px-2 py-1 focus-within:border-[#2563eb] transition-all">
+                    <input 
+                      value={prompt} 
+                      onChange={e => setPrompt(e.target.value)} 
+                      onKeyDown={e => e.key === 'Enter' && handleSendMessage()} 
+                      placeholder={t.ai_placeholder} 
+                      className="flex-1 bg-transparent px-3 py-2 text-[13px] text-white outline-none" 
+                      autoFocus
+                    />
+                    <button 
+                      onClick={handleSendMessage} 
+                      className="p-2 bg-[#2563eb] text-white rounded-lg hover:scale-105 transition-all shadow-lg"
+                    >
+                      <Send size={18} />
+                    </button>
                   </div>
                 </div>
               </div>
