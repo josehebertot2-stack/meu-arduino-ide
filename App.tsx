@@ -198,20 +198,20 @@ const App: React.FC = () => {
   const isDark = theme === 'dark';
 
   return (
-    <div className={`flex flex-col h-screen ${isDark ? 'bg-[#0b0e14] text-slate-300' : 'bg-[#f6f6f6] text-slate-800'} overflow-hidden transition-colors duration-200`}>
-      <header className={`h-12 border-b ${isDark ? 'border-white/5 bg-[#1c1f24]' : 'border-slate-200 bg-white'} flex items-center justify-between px-4 shrink-0 z-50`}>
+    <div className={`flex flex-col h-screen ${isDark ? 'bg-[#0b0e14] text-slate-300' : 'bg-[#eaeff5] text-slate-800'} overflow-hidden transition-colors duration-200`}>
+      <header className={`h-12 border-b ${isDark ? 'border-white/5 bg-[#1c1f24]' : 'border-slate-300 bg-slate-100'} flex items-center justify-between px-4 shrink-0 z-50`}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => window.location.reload()}>
             <Zap size={20} className="text-[#008184]" fill="currentColor" />
             <span className={`text-[12px] font-black tracking-tighter text-[#008184]`}>ARDUPROGRAM IDE</span>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={handleVerify} title="Verificar" disabled={isBusy} className={`p-2 rounded-md transition-colors ${isDark ? 'text-slate-400 hover:bg-white/5 hover:text-teal-400' : 'text-slate-600 hover:bg-slate-100 hover:text-teal-600'}`}><Check size={18} /></button>
-            <button onClick={connectSerial} className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${isConnected ? 'bg-teal-500 text-black' : isDark ? 'bg-white/5 text-slate-500 hover:bg-white/10' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+            <button onClick={handleVerify} title="Verificar" disabled={isBusy} className={`p-2 rounded-md transition-colors ${isDark ? 'text-slate-400 hover:bg-white/5 hover:text-teal-400' : 'text-slate-600 hover:bg-slate-200 hover:text-teal-700'}`}><Check size={18} /></button>
+            <button onClick={connectSerial} className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${isConnected ? 'bg-teal-500 text-black' : isDark ? 'bg-white/5 text-slate-500 hover:bg-white/10' : 'bg-slate-300 text-slate-700 hover:bg-slate-400'}`}>
               {isConnected ? 'Conectado' : 'Conectar'}
             </button>
           </div>
-          <div className={`flex items-center gap-2 rounded-full px-3 py-1 ${isDark ? 'bg-black/30 border border-white/5' : 'bg-slate-100 border border-slate-200'}`}>
+          <div className={`flex items-center gap-2 rounded-full px-3 py-1 ${isDark ? 'bg-black/30 border border-white/5' : 'bg-slate-200 border border-slate-300'}`}>
             <BoardIcon size={12} className="text-teal-500" />
             <select value={selectedBoard.id} onChange={(e) => setSelectedBoard(BOARDS.find(b => b.id === e.target.value) || BOARDS[0])} className="bg-transparent text-[10px] font-bold outline-none cursor-pointer">
               {BOARDS.map(b => <option key={b.id} value={b.id} className={`${isDark ? 'bg-[#1c1f24]' : 'bg-white text-slate-800'}`}>{b.name}</option>)}
@@ -219,7 +219,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={toggleTheme} title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"} className={`p-2 rounded-lg transition-all ${isDark ? 'text-slate-400 hover:bg-white/5 hover:text-yellow-400' : 'text-slate-600 hover:bg-slate-100 hover:text-indigo-600'}`}>
+          <button onClick={toggleTheme} title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"} className={`p-2 rounded-lg transition-all ${isDark ? 'text-slate-400 hover:bg-white/5 hover:text-yellow-400' : 'text-slate-600 hover:bg-slate-200 hover:text-indigo-600'}`}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <div className={`flex items-center gap-2 rounded-md px-3 py-1 ${isDark ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'}`}>
@@ -229,10 +229,10 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {progress > 0 && <div className={`h-[2px] w-full ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}><div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${progress}%` }} /></div>}
+      {progress > 0 && <div className={`h-[2px] w-full ${isDark ? 'bg-white/5' : 'bg-slate-300'}`}><div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${progress}%` }} /></div>}
 
       <div className="flex flex-1 overflow-hidden">
-        <nav className={`w-14 border-r ${isDark ? 'border-white/5 bg-[#1c1f24]' : 'border-slate-200 bg-slate-100'} flex flex-col items-center py-4 gap-4 shrink-0`}>
+        <nav className={`w-14 border-r ${isDark ? 'border-white/5 bg-[#1c1f24]' : 'border-slate-300 bg-[#e2e8f0]'} flex flex-col items-center py-4 gap-4 shrink-0`}>
           {[
             { id: 'files', icon: Files },
             { id: 'ai', icon: MessageSquare },
@@ -240,14 +240,14 @@ const App: React.FC = () => {
             { id: 'creator', icon: User },
             { id: 'settings', icon: Settings },
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as TabType)} className={`p-3 rounded-xl transition-all ${activeTab === tab.id ? 'text-teal-400 bg-teal-400/10' : isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as TabType)} className={`p-3 rounded-xl transition-all ${activeTab === tab.id ? 'text-teal-400 bg-teal-400/10' : isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-500 hover:text-slate-900'}`}>
               <tab.icon size={20}/>
             </button>
           ))}
         </nav>
 
-        <aside className={`w-80 border-r ${isDark ? 'border-white/5 bg-[#0b0e14]' : 'border-slate-200 bg-white'} flex flex-col shrink-0 overflow-hidden`}>
-          <div className={`h-10 px-4 border-b ${isDark ? 'border-white/5 bg-black/10' : 'border-slate-100 bg-slate-50'} flex justify-between items-center`}>
+        <aside className={`w-80 border-r ${isDark ? 'border-white/5 bg-[#0b0e14]' : 'border-slate-300 bg-[#f8fafc]'} flex flex-col shrink-0 overflow-hidden`}>
+          <div className={`h-10 px-4 border-b ${isDark ? 'border-white/5 bg-black/10' : 'border-slate-200 bg-slate-100'} flex justify-between items-center`}>
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{activeTab === 'ai' ? 'Gemini AI' : activeTab === 'creator' ? 'Criador' : activeTab}</span>
             {activeTab === 'files' && <Plus size={16} className="cursor-pointer hover:text-teal-500" onClick={() => {
               const name = `sketch_${Date.now().toString().slice(-4)}.ino`;
@@ -256,7 +256,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
             {activeTab === 'files' && files.map((file, idx) => (
-              <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`flex items-center gap-3 px-4 py-2 cursor-pointer transition-colors ${activeFileIndex === idx ? 'bg-teal-500/10 text-teal-400' : isDark ? 'hover:bg-white/5 text-slate-500' : 'hover:bg-slate-50 text-slate-600'}`}>
+              <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`flex items-center gap-3 px-4 py-2 cursor-pointer transition-colors ${activeFileIndex === idx ? 'bg-teal-500/10 text-teal-400' : isDark ? 'hover:bg-white/5 text-slate-500' : 'hover:bg-slate-200 text-slate-600'}`}>
                 <FileCode size={14} />
                 <span className="text-xs truncate">{file.name}</span>
               </div>
@@ -273,7 +273,7 @@ const App: React.FC = () => {
                   )}
                   {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${msg.role === 'user' ? 'bg-teal-600 text-white shadow-lg' : isDark ? 'bg-white/5 text-slate-300 border border-white/5' : 'bg-slate-100 text-slate-800 border border-slate-200'}`}>
+                      <div className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${msg.role === 'user' ? 'bg-teal-600 text-white shadow-lg' : isDark ? 'bg-white/5 text-slate-300 border border-white/5' : 'bg-slate-200 text-slate-800 border border-slate-300'}`}>
                         {msg.text}
                       </div>
                     </div>
@@ -285,7 +285,7 @@ const App: React.FC = () => {
                   )}
                   <div ref={chatEndRef} />
                 </div>
-                <div className={`p-4 border-t ${isDark ? 'border-white/5 bg-black/20' : 'border-slate-100 bg-slate-50'}`}>
+                <div className={`p-4 border-t ${isDark ? 'border-white/5 bg-black/20' : 'border-slate-200 bg-slate-100'}`}>
                   <div className="flex gap-2">
                     <input 
                       value={prompt} 
@@ -313,7 +313,7 @@ const App: React.FC = () => {
                     <div key={i} className={`p-3 border rounded-xl hover:border-teal-500/50 transition-all cursor-pointer group ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
                       <div className="flex justify-between items-start mb-1">
                         <span className="text-[11px] font-bold text-teal-400">{lib.name}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>{lib.version}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>{lib.version}</span>
                       </div>
                       <p className={`text-[10px] line-clamp-2 mb-2 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{lib.description}</p>
                       <button onClick={() => {
@@ -321,7 +321,7 @@ const App: React.FC = () => {
                         newFiles[activeFileIndex].content = lib.header + "\n" + newFiles[activeFileIndex].content;
                         setFiles(newFiles);
                         setOutputMessages(prev => [...prev, `Biblioteca ${lib.name} incluída.`]);
-                      }} className={`w-full py-1.5 rounded text-[10px] font-bold uppercase transition-all ${isDark ? 'bg-white/5 hover:bg-teal-500 hover:text-black' : 'bg-slate-100 hover:bg-teal-500 hover:text-white'}`}>Instalar</button>
+                      }} className={`w-full py-1.5 rounded text-[10px] font-bold uppercase transition-all ${isDark ? 'bg-white/5 hover:bg-teal-500 hover:text-black' : 'bg-slate-200 hover:bg-teal-500 hover:text-white'}`}>Instalar</button>
                     </div>
                   ))}
                 </div>
@@ -332,11 +332,11 @@ const App: React.FC = () => {
               <div className="p-6 flex flex-col items-center text-center space-y-6">
                 <div className="relative">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-teal-500 to-emerald-400 p-1">
-                    <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden ${isDark ? 'bg-[#0b0e14]' : 'bg-white'}`}>
+                    <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden ${isDark ? 'bg-[#0b0e14]' : 'bg-[#f8fafc]'}`}>
                        <User size={48} className="text-teal-400 opacity-80" />
                     </div>
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 bg-teal-500 p-1.5 rounded-full border-4 ${isDark ? 'border-[#0b0e14]' : 'border-white'}`}>
+                  <div className={`absolute -bottom-1 -right-1 bg-teal-500 p-1.5 rounded-full border-4 ${isDark ? 'border-[#0b0e14]' : 'border-[#f8fafc]'}`}>
                     <Award size={14} className="text-black" />
                   </div>
                 </div>
@@ -346,7 +346,7 @@ const App: React.FC = () => {
                   <p className="text-[10px] text-teal-400 font-bold uppercase tracking-widest">Fullstack Developer & Maker</p>
                 </div>
 
-                <div className={`p-4 border rounded-2xl text-[11px] leading-relaxed ${isDark ? 'bg-white/5 border-white/5 text-slate-400' : 'bg-slate-50 border-slate-100 text-slate-600'}`}>
+                <div className={`p-4 border rounded-2xl text-[11px] leading-relaxed ${isDark ? 'bg-white/5 border-white/5 text-slate-400' : 'bg-slate-200/50 border-slate-300/50 text-slate-600'}`}>
                   "Desenvolvi a ArduProgram IDE com o objetivo de democratizar o acesso à programação de hardware, trazendo inteligência artificial e portabilidade para o ecossistema Arduino."
                 </div>
 
@@ -368,7 +368,7 @@ const App: React.FC = () => {
               <div className="p-4 space-y-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Personalização</label>
-                  <button onClick={toggleTheme} className={`w-full py-3 rounded-xl border flex items-center justify-center gap-3 text-xs font-medium transition-all ${isDark ? 'border-white/5 bg-white/5 hover:bg-white/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                  <button onClick={toggleTheme} className={`w-full py-3 rounded-xl border flex items-center justify-center gap-3 text-xs font-medium transition-all ${isDark ? 'border-white/5 bg-white/5 hover:bg-white/10' : 'border-slate-300 bg-slate-200 hover:bg-slate-300'}`}>
                     {isDark ? <Sun size={14} /> : <Moon size={14} />}
                     Alternar para Tema {isDark ? 'Claro' : 'Escuro'}
                   </button>
@@ -381,7 +381,7 @@ const App: React.FC = () => {
                     Resetar Todos os Arquivos
                   </button>
                 </div>
-                <div className={`pt-4 border-t space-y-2 ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
+                <div className={`pt-4 border-t space-y-2 ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                    <label className="text-[10px] font-bold text-slate-500 uppercase">Projeto</label>
                    <button onClick={() => {
                      const blob = new Blob([activeFile.content], {type: 'text/plain'});
@@ -399,10 +399,10 @@ const App: React.FC = () => {
           </div>
         </aside>
 
-        <main className={`flex-1 flex flex-col relative transition-colors duration-200 ${isDark ? 'bg-[#0d1117]' : 'bg-[#fcfcfc]'}`}>
-          <div className={`h-9 border-b flex items-center px-2 shrink-0 overflow-x-auto no-scrollbar ${isDark ? 'bg-black/30 border-white/5' : 'bg-slate-100 border-slate-200'}`}>
+        <main className={`flex-1 flex flex-col relative transition-colors duration-200 ${isDark ? 'bg-[#0d1117]' : 'bg-[#f1f5f9]'}`}>
+          <div className={`h-9 border-b flex items-center px-2 shrink-0 overflow-x-auto no-scrollbar ${isDark ? 'bg-black/30 border-white/5' : 'bg-slate-200 border-slate-300'}`}>
             {files.map((file, idx) => (
-              <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`h-full flex items-center px-4 text-[11px] font-medium cursor-pointer border-r gap-3 transition-all ${isDark ? 'border-white/5' : 'border-slate-200'} ${activeFileIndex === idx ? (isDark ? 'bg-[#0d1117] text-teal-400 border-t-2 border-t-teal-500' : 'bg-white text-teal-600 border-t-2 border-t-teal-600') : (isDark ? 'text-slate-600 bg-black/5' : 'text-slate-400 bg-slate-50')}`}>
+              <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`h-full flex items-center px-4 text-[11px] font-medium cursor-pointer border-r gap-3 transition-all ${isDark ? 'border-white/5' : 'border-slate-300'} ${activeFileIndex === idx ? (isDark ? 'bg-[#0d1117] text-teal-400 border-t-2 border-t-teal-500' : 'bg-[#f1f5f9] text-teal-700 border-t-2 border-t-teal-600') : (isDark ? 'text-slate-600 bg-black/5' : 'text-slate-500 bg-slate-300/50')}`}>
                 {file.name}
                 {files.length > 1 && (
                   <X size={10} className="hover:text-red-400 transition-colors" onClick={(e) => {
@@ -416,7 +416,7 @@ const App: React.FC = () => {
             ))}
           </div>
           <div className="flex-1 relative overflow-hidden">
-            <div className={`absolute left-0 top-0 w-12 h-full border-r py-5 flex flex-col items-center font-mono text-[13px] select-none ${isDark ? 'bg-black/5 border-white/5 text-slate-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+            <div className={`absolute left-0 top-0 w-12 h-full border-r py-5 flex flex-col items-center font-mono text-[13px] select-none ${isDark ? 'bg-black/5 border-white/5 text-slate-700' : 'bg-slate-300/30 border-slate-300 text-slate-500'}`}>
               {(activeFile.content || '').split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
             </div>
             <div className="ml-12 h-full relative">
@@ -424,8 +424,8 @@ const App: React.FC = () => {
                <textarea value={activeFile.content} onChange={e => { const n = [...files]; if(n[activeFileIndex]) n[activeFileIndex].content = e.target.value; setFiles(n); }} onScroll={(e) => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; }} spellCheck={false} className="absolute inset-0 w-full h-full p-5 bg-transparent text-transparent caret-teal-400 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none leading-relaxed text-[14px]" />
             </div>
           </div>
-          <div className={`h-44 border-t flex flex-col shrink-0 ${isDark ? 'border-white/5 bg-black/20' : 'border-slate-200 bg-white shadow-inner'}`}>
-            <div className={`h-8 border-b flex items-center px-4 gap-6 text-[10px] font-bold uppercase ${isDark ? 'border-white/5 text-slate-500' : 'border-slate-100 text-slate-400'}`}>
+          <div className={`h-44 border-t flex flex-col shrink-0 ${isDark ? 'border-white/5 bg-black/20' : 'border-slate-300 bg-[#f8fafc] shadow-inner'}`}>
+            <div className={`h-8 border-b flex items-center px-4 gap-6 text-[10px] font-bold uppercase ${isDark ? 'border-white/5 text-slate-500' : 'border-slate-300 text-slate-500'}`}>
                <button onClick={() => setConsoleTab('output')} className={consoleTab === 'output' ? 'text-teal-400' : ''}>Saída</button>
                <button onClick={() => setConsoleTab('serial')} className={consoleTab === 'serial' ? 'text-teal-400' : ''}>Serial</button>
                <div className="flex-1" />
