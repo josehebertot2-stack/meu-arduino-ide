@@ -13,9 +13,9 @@ import { FileNode, ChatMessage, TabType, SerialMessage, ArduinoExample, ArduinoB
 import { getCodeAssistance, analyzeCode } from './services/geminiService';
 
 const EXAMPLES: ArduinoExample[] = [
-  { name: 'Blink', category: 'Basics', content: `// Sketch de exemplo: Piscar LED\nvoid setup() {\n  pinMode(LED_BUILTIN, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}` },
-  { name: 'SerialRead', category: 'Communication', content: `void setup() {\n  Serial.begin(9600);\n  Serial.println("Sistema Iniciado...");\n}\n\nvoid loop() {\n  if (Serial.available()) {\n    char c = Serial.read();\n    Serial.print("Recebi: ");\n    Serial.println(c);\n  }\n}` },
-  { name: 'AnalogReadSerial', category: 'Basics', content: `void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int sensorValue = analogRead(A0);\n  Serial.println(sensorValue);\n  delay(100);\n}` }
+  { name: 'Blink', category: 'Basics', content: '// Sketch de exemplo: Piscar LED\nvoid setup() {\n  pinMode(LED_BUILTIN, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}' },
+  { name: 'SerialRead', category: 'Communication', content: 'void setup() {\n  Serial.begin(9600);\n  Serial.println("Sistema Iniciado...");\n}\n\nvoid loop() {\n  if (Serial.available()) {\n    char c = Serial.read();\n    Serial.print("Recebi: ");\n    Serial.println(c);\n  }\n}' },
+  { name: 'AnalogReadSerial', category: 'Basics', content: 'void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int sensorValue = analogRead(A0);\n  Serial.println(sensorValue);\n  delay(100);\n}' }
 ];
 
 const BOARDS: ArduinoBoard[] = [
@@ -169,7 +169,7 @@ const App: React.FC = () => {
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setOutputMessages(prev => [...prev, `Porta Serial aberta.`]);
+      setOutputMessages(prev => [...prev, "Porta Serial aberta."]);
       const reader = port.readable.getReader();
       while (true) {
         const { value, done } = await reader.read();
@@ -395,11 +395,20 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] custom-scrollbar bg-black/40">
               {consoleTab === 'output' ? (
                 <div className="space-y-1">
-                  {outputMessages.map((m, i) => <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>&gt; {m}</div>)}
+                  {outputMessages.map((m, i) => (
+                    <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>
+                      {">"} {m}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {serialMessages.map((msg, i) => <div key={i} className="flex gap-4"><span className="text-slate-600">[{msg.timestamp}]</span><span className="text-teal-500">{msg.text}</span></div>)}
+                  {serialMessages.map((msg, i) => (
+                    <div key={i} className="flex gap-4">
+                      <span className="text-slate-600">[{msg.timestamp}]</span>
+                      <span className="text-teal-500">{msg.text}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               <div ref={consoleEndRef} />
