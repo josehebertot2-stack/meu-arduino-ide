@@ -380,7 +380,7 @@ const App: React.FC = () => {
                 <div className="space-y-1">
                   {outputMessages.map((m, i) => (
                     <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>
-                      <span className="opacity-10 mr-2 select-none">&gt;</span> {m}
+                      <span className="opacity-10 mr-2 select-none">{" > "}</span> {m}
                     </div>
                   ))}
                   {outputMessages.length === 0 && <div className="text-slate-700 italic text-[10px]">Sem novas mensagens de saída.</div>}
