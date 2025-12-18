@@ -7,7 +7,6 @@ import {
   ArrowRight, Save, RotateCcw, Github, ExternalLink, 
   Sliders, Type as FontIcon, Monitor, Box, Sun, Moon, Instagram, Key,
   Terminal as TerminalIcon,
-  // Fix: Added missing MessageSquare icon import from lucide-react
   MessageSquare
 } from 'lucide-react';
 import { FileNode, ChatMessage, TabType, SerialMessage, ArduinoExample, ArduinoBoard, ArduinoLibrary } from './types';
@@ -396,7 +395,7 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] custom-scrollbar bg-black/40">
               {consoleTab === 'output' ? (
                 <div className="space-y-1">
-                  {outputMessages.map((m, i) => <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>> {m}</div>)}
+                  {outputMessages.map((m, i) => <div key={i} className={m.includes('[ERRO]') ? 'text-red-400' : 'text-slate-400'}>&gt; {m}</div>)}
                 </div>
               ) : (
                 <div className="space-y-1">
