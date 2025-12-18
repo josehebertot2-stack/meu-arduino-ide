@@ -1,88 +1,42 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 /**
- * Service to interact with the Google Gemini API for Arduino-specific tasks.
+ * Serviço ultra-simplificado para o ArduProgram.
+ * O sistema assume que a chave está presente no ambiente (process.env.API_KEY).
  */
 export const getCodeAssistance = async (prompt: string, currentCode: string) => {
   try {
-    // A chave API é obtida automaticamente do ambiente via process.env.API_KEY.
-    // Isso garante segurança e conformidade com as diretrizes da plataforma.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: `Contexto do código Arduino atual:\n\`\`\`cpp\n${currentCode}\n\`\`\`\n\nPergunta do usuário: ${prompt}`,
+      model: 'gemini-3-flash-preview',
+      contents: `Código Arduino:\n${currentCode}\n\nDúvida: ${prompt}`,
       config: {
-        systemInstruction: `Você é o "Arduino Gemini Master", um assistente especialista em hardware, C++ para microcontroladores e eletrônica.
-        
-        Suas funções:
-        1. Gerar sketches Arduino eficientes e bem comentados.
-        2. Explicar conceitos de eletrônica (pull-ups, PWM, I2C, etc).
-        3. Ajudar a depurar erros de compilação ou lógica.
-        
-        Diretrizes de Resposta:
-        - Responda SEMPRE no mesmo idioma da pergunta do usuário (Português ou Inglês).
-        - Se o usuário pedir um código, use blocos de código markdown com a tag 'cpp'.
-        - Seja direto e técnico, mas didático.
-        - Sugira o uso de bibliotecas padrão quando apropriado.`,
-        temperature: 0.7,
+        systemInstruction: "Você é um especialista em Arduino. Responda de forma curta, direta e em português. Use blocos de código 'cpp' quando necessário.",
+        temperature: 0.5,
       },
     });
 
-    return response.text || "Desculpe, não consegui processar sua solicitação no momento.";
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    if (error.message?.includes("API key")) {
-      return "Erro: Chave de API não configurada corretamente ou projeto sem faturamento ativo.";
-    }
-    return `Erro ao consultar a IA: ${error.message || "Erro desconhecido"}`;
+    return response.text || "Sem resposta da IA.";
+  } catch (error) {
+    console.error("AI Error:", error);
+    return "A IA está temporariamente indisponível (verifique a conexão ou os limites da API).";
   }
 };
 
 /**
- * Static code analysis using Gemini Pro for deep reasoning.
+ * Análise rápida de código.
  */
 export const analyzeCode = async (code: string) => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: `Analise este código Arduino em busca de erros: \n\`\`\`cpp\n${code}\n\`\`\``,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            status: { type: Type.STRING, description: "'Ok', 'Alerta' ou 'Erro'" },
-            summary: { type: Type.STRING, description: "Resumo rápido da análise" },
-            issues: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  severity: { type: Type.STRING },
-                  message: { type: Type.STRING },
-                  line: { type: Type.NUMBER }
-                },
-                required: ["severity", "message"]
-              }
-            }
-          },
-          required: ["status", "summary", "issues"],
-        },
-        systemInstruction: "Você é um compilador humano de Arduino. Analise o código estaticamente e identifique bugs, vazamentos de memória ou má práticas. Retorne apenas JSON no idioma correspondente.",
-      },
+      model: 'gemini-3-flash-preview',
+      contents: `Analise erros neste código Arduino e responda brevemente: ${code}`,
     });
-
-    return JSON.parse(response.text || "{}");
-  } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
-    return { 
-      status: "Erro", 
-      summary: "Falha técnica na análise via IA.", 
-      issues: [{ severity: "critical", message: "Conexão com Gemini falhou ou API Key ausente." }] 
-    };
+    return { status: "Ok", summary: response.text };
+  } catch (error) {
+    return { status: "Erro", summary: "Não foi possível analisar no momento." };
   }
 };
