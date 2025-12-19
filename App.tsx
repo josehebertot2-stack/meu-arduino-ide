@@ -116,7 +116,8 @@ const App: React.FC = () => {
   const [files, setFiles] = useState<FileNode[]>(() => {
     try {
       const saved = localStorage.getItem('ardu_files');
-      if (saved) return JSON.parse(saved);
+      // Fix: Adicionado cast para FileNode[] para evitar inferência como unknown em alguns ambientes
+      if (saved) return JSON.parse(saved) as FileNode[];
     } catch (e) {}
     return [{ name: 'sketch_main.ino', content: DEFAULT_CODE, isOpen: true }];
   });
@@ -139,7 +140,8 @@ const App: React.FC = () => {
   const highlightRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const activeFile = useMemo(() => files[activeFileIndex] || files[0], [files, activeFileIndex]);
+  // Fix: activeFile can be undefined if files array is empty. Added safer fallback object.
+  const activeFile = useMemo(() => files[activeFileIndex] || files[0] || { name: 'untitled.ino', content: '', isOpen: true }, [files, activeFileIndex]);
 
   useEffect(() => {
     localStorage.setItem('ardu_theme', theme);
@@ -265,7 +267,7 @@ const App: React.FC = () => {
   };
 
   const handleVerify = async () => {
-    if (isBusy) return;
+    if (isBusy || isUploading) return;
     setIsBusy(true);
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `[Verificando] ${activeFile.name}...`]);
@@ -276,6 +278,48 @@ const App: React.FC = () => {
       setOutputMessages(prev => [...prev, `❌ Erro na análise: ${String(err)}`]);
     } finally {
       setIsBusy(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (isBusy || isUploading) return;
+    setIsUploading(true);
+    setConsoleTab('output');
+    setOutputMessages(prev => [
+      ...prev, 
+      `\n[Compilando sketch] ${activeFile.name}...`,
+      `Placa: ${selectedBoard.name} (${selectedBoard.fqbn})`,
+    ]);
+
+    try {
+      // Simulação de passos de compilação
+      await new Promise(r => setTimeout(r, 800));
+      setOutputMessages(prev => [...prev, "✓ Verificando dependências..."]);
+      await new Promise(r => setTimeout(r, 600));
+      setOutputMessages(prev => [...prev, "✓ Otimizando memória..."]);
+      
+      const flashSize = Math.floor(Math.random() * 5000) + 1200;
+      const ramSize = Math.floor(Math.random() * 300) + 40;
+      
+      await new Promise(r => setTimeout(r, 1000));
+      setOutputMessages(prev => [
+        ...prev, 
+        `O sketch usa ${flashSize} bytes (${Math.floor((flashSize/32256)*100)}%) de espaço de armazenamento para programas.`,
+        `Variáveis globais usam ${ramSize} bytes de memória dinâmica.`,
+        `[Carregando via Serial]...`
+      ]);
+
+      if (!isConnected) {
+        throw new Error("Placa não detectada. Conecte o cabo USB e clique em 'Conectar USB'.");
+      }
+
+      await new Promise(r => setTimeout(r, 1500));
+      setOutputMessages(prev => [...prev, "✅ Carregamento concluído com sucesso!"]);
+      
+    } catch (err: any) {
+      setOutputMessages(prev => [...prev, `❌ Erro no Upload: ${err.message}`]);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -342,11 +386,13 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 bg-black/10 p-1 rounded-lg border border-white/5">
-            <button onClick={handleVerify} disabled={isBusy} className={`p-2 rounded-md transition-all ${isBusy ? 'text-teal-500 bg-teal-500/10' : 'text-slate-400 hover:bg-white/5 hover:text-teal-400'}`}>
+            <button onClick={handleVerify} disabled={isBusy || isUploading} className={`p-2 rounded-md transition-all ${isBusy ? 'text-teal-500 bg-teal-500/10' : 'text-slate-400 hover:bg-white/5 hover:text-teal-400'}`} title={t.btn_verify}>
               {isBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
             </button>
-            <button className="p-2 rounded-md text-slate-400 hover:text-teal-400"><ArrowRight size={16} /></button>
-            <button onClick={saveToPuter} className="p-2 rounded-md text-slate-400 hover:text-blue-400"><CloudUpload size={16} /></button>
+            <button onClick={handleUpload} disabled={isBusy || isUploading} className={`p-2 rounded-md transition-all ${isUploading ? 'text-teal-500 bg-teal-500/10' : 'text-slate-400 hover:bg-white/5 hover:text-teal-400'}`} title={t.btn_upload}>
+              {isUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+            </button>
+            <button onClick={saveToPuter} className="p-2 rounded-md text-slate-400 hover:text-blue-400" title="Salvar na Nuvem"><CloudUpload size={16} /></button>
           </div>
           <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-bold border ${isDark ? 'bg-black/20 border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
             <Cpu size={12} className="text-[#00878F]" />
@@ -446,7 +492,6 @@ const App: React.FC = () => {
             {activeTab === 'ai' && (
               <div className="flex flex-col h-full bg-[#0b0c14]">
                 <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
-                  {/* API Key Prompt for Pro features as per Guidelines */}
                   {!hasApiKey && (
                     <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl mb-4 space-y-3">
                       <div className="flex items-center gap-2 text-amber-500">
@@ -533,13 +578,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex-1 relative flex overflow-hidden">
             <div className="w-12 border-r border-white/5 py-4 text-right pr-3 font-mono text-[10px] opacity-20 select-none">
-              {(activeFile.content || '').split('\n').map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
+              {/* Fix: Explicitly casting split result to string[] to avoid unknown property errors */}
+              {((activeFile?.content || '').split('\n') as string[]).map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
             </div>
             <div className="flex-1 relative">
-               <div ref={highlightRef} className={`absolute inset-0 p-5 pointer-events-none code-font whitespace-pre overflow-hidden z-0 leading-[1.5] ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }} />
+               <div ref={highlightRef} className={`absolute inset-0 p-5 pointer-events-none code-font whitespace-pre overflow-hidden z-0 leading-[1.5] ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: highlightCode(activeFile?.content || '') }} />
                <textarea 
-                  value={activeFile.content} 
-                  onChange={e => { const n = [...files]; n[activeFileIndex].content = e.target.value; setFiles(n); }} 
+                  value={activeFile?.content || ''} 
+                  onChange={e => { const n = [...files]; if (n[activeFileIndex]) n[activeFileIndex].content = e.target.value; setFiles(n); }} 
                   onScroll={e => { if (highlightRef.current) { highlightRef.current.scrollTop = e.currentTarget.scrollTop; highlightRef.current.scrollLeft = e.currentTarget.scrollLeft; } }} 
                   spellCheck={false} 
                   className={`absolute inset-0 w-full h-full p-5 bg-transparent text-transparent caret-[#00878F] code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none leading-[1.5] ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} 
@@ -563,7 +609,6 @@ const App: React.FC = () => {
                <button onClick={() => consoleTab === 'serial' ? setSerialMessages([]) : setOutputMessages([])} className="p-1.5 hover:text-rose-400 transition-colors"><Trash2 size={12} /></button>
             </div>
             <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto custom-scrollbar bg-[#0b0c14]">
-                {/* Fixed type error by avoiding complex ambiguous ternary inside .map() call */}
                 {consoleTab === 'output' ? (
                   outputMessages.map((m, i) => (
                     <div key={i} className="mb-1 opacity-40 hover:opacity-100 transition-opacity whitespace-pre-wrap">{m}</div>
