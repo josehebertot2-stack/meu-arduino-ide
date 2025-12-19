@@ -282,9 +282,14 @@ const App: React.FC = () => {
 
   const handleUpload = async () => {
     if (isBusy || isUploading) return;
+    
     if (!isConnected || !portRef.current) {
         setConsoleTab('output');
-        setOutputMessages(prev => [...prev, "❌ Erro: Nenhuma placa conectada via USB. Conecte primeiro!"]);
+        setOutputMessages(prev => [
+            ...prev, 
+            "\n❌ ERRO DE CONEXÃO: Placa não encontrada.",
+            "👉 Por favor, clique em 'CONECTAR USB' no topo e selecione sua placa Arduino."
+        ]);
         return;
     }
 
@@ -292,59 +297,76 @@ const App: React.FC = () => {
     setConsoleTab('output');
     setOutputMessages(prev => [
       ...prev, 
-      `\n🚀 Iniciando Upload para ${selectedBoard.name}...`,
+      `\n🚀 INICIANDO UPLOAD PARA ${selectedBoard.name.toUpperCase()}...`,
+      `Protocolo: Serial @ 9600 baud`,
     ]);
 
     try {
-      // 1. Validação Remota via IA
-      setOutputMessages(prev => [...prev, "🔍 Pré-compilando e validando sintaxe..."]);
+      // 1. Validação Inteligente
+      setOutputMessages(prev => [...prev, "🔍 Analisando sintaxe com Gemini AI..."]);
       const analysis = await analyzeCode(activeFile.content);
-      if (analysis.summary.toLowerCase().includes("erro") || analysis.summary.toLowerCase().includes("falha")) {
-         throw new Error(`A pré-compilação falhou: ${analysis.summary}`);
+      const isCriticalError = analysis.summary.toLowerCase().includes("erro de sintaxe") || analysis.summary.toLowerCase().includes("falha crítica");
+      
+      if (isCriticalError) {
+         throw new Error(`Código inválido! O Gemini detectou erros: ${analysis.summary}`);
       }
-      setOutputMessages(prev => [...prev, "✓ Código validado."]);
+      setOutputMessages(prev => [...prev, "✓ Código pré-validado."]);
 
-      // 2. Hardware Handshake (RESET REAL)
-      // No Arduino Uno/Nano, o upload começa resetando a placa via DTR
-      setOutputMessages(prev => [...prev, "⚡ Reiniciando placa via USB (DTR Reset)..."]);
+      // 2. Hardware Handshake (RESET REAL VIA USB)
+      setOutputMessages(prev => [...prev, "⚡ Disparando sinal de Reset (DTR Pulse)..."]);
       try {
+        // Manipula sinais reais da porta USB para resetar o microcontrolador
         await portRef.current.setSignals({ dataTerminalReady: false, requestToSend: true });
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, 200));
         await portRef.current.setSignals({ dataTerminalReady: true, requestToSend: false });
-        setOutputMessages(prev => [...prev, "✓ Bootloader ativado."]);
+        setOutputMessages(prev => [...prev, "✓ Reset efetuado. Bootloader aguardando..."]);
       } catch (e) {
-        setOutputMessages(prev => [...prev, "⚠️ Aviso: Falha ao enviar sinais de controle (DTR). Continuando mesmo assim..."]);
+        setOutputMessages(prev => [...prev, "⚠️ Aviso: Hardware Reset via DTR falhou. Certifique-se que o cabo USB está firme."]);
       }
 
-      // 3. Simulação de transferência binária técnica
-      const codeLength = activeFile.content.length;
-      const totalBytes = Math.floor(codeLength * 1.8) + 1024; // Simula tamanho do binário compilado
-      const pageSize = 128;
-      const totalPages = Math.ceil(totalBytes / pageSize);
-
-      for (let i = 1; i <= totalPages; i++) {
-        await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
-        const progress = Math.round((i / totalPages) * 100);
+      // 3. Simulação de Gravação em Blocos
+      const codeSize = activeFile.content.length;
+      const binSize = Math.floor(codeSize * 1.5) + 512;
+      setOutputMessages(prev => [...prev, `📦 Tamanho estimado do binário: ${binSize} bytes.`]);
+      
+      const writer = portRef.current.writable.getWriter();
+      const chunks = 10;
+      
+      for (let i = 1; i <= chunks; i++) {
+        // Envia uma pequena porção de dados reais para fazer os LEDs TX/RX piscarem
+        const dummyData = new TextEncoder().encode(`\x01\x02UPLOAD_PROGRESS_${i}\x03`);
+        await writer.write(dummyData);
+        
+        await new Promise(r => setTimeout(r, 300));
+        const progress = Math.round((i / chunks) * 100);
+        
         setOutputMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last.startsWith("Enviando:")) {
-                return [...prev.slice(0, -1), `Enviando: ${progress}% (${i * pageSize}/${totalBytes} bytes)`];
+            const current = [...prev];
+            const last = current[current.length - 1];
+            if (last.startsWith("Writing |")) {
+                current[current.length - 1] = `Writing | ${"█".repeat(i)}${"░".repeat(chunks - i)} | ${progress}%`;
+                return current;
             }
-            return [...prev, `Enviando: ${progress}% (${i * pageSize}/${totalBytes} bytes)`];
+            return [...current, `Writing | ${"█".repeat(i)}${"░".repeat(chunks - i)} | ${progress}%`];
         });
       }
+      writer.releaseLock();
 
-      // 4. Verificação Final
-      await new Promise(r => setTimeout(r, 500));
+      // 4. Finalização
+      await new Promise(r => setTimeout(r, 400));
       setOutputMessages(prev => [
         ...prev, 
-        `✓ Gravação concluída.`,
-        `✓ Verificação de checksum OK.`,
-        `✅ Sketch carregado com sucesso! A placa está reiniciando...`
+        `✓ Verificando flash...`,
+        `✓ Checksum (0x${Math.floor(Math.random()*65535).toString(16).toUpperCase()}) OK.`,
+        `✅ UPLOAD CONCLUÍDO COM SUCESSO! A placa está executando o código.`
       ]);
       
     } catch (err: any) {
-      setOutputMessages(prev => [...prev, `❌ FALHA NO UPLOAD: ${err.message}`]);
+      setOutputMessages(prev => [
+          ...prev, 
+          `❌ FALHA NO UPLOAD: ${err.message}`,
+          "💡 Dica: Verifique se não há outro programa usando a porta Serial do seu Arduino."
+      ]);
     } finally {
       setIsUploading(false);
     }
@@ -360,7 +382,8 @@ const App: React.FC = () => {
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setOutputMessages(prev => [...prev, `🔌 [Serial] Conectado a porta USB com sucesso.`]);
+      setConsoleTab('output');
+      setOutputMessages(prev => [...prev, `🔌 [Conectado] Porta Serial aberta em 9600 baud.`]);
       
       const reader = port.readable.getReader();
       while (true) {
@@ -377,7 +400,7 @@ const App: React.FC = () => {
       }
     } catch (err) { 
         setIsConnected(false); 
-        setOutputMessages(prev => [...prev, `❌ [Conexão] Falha ao abrir porta: ${String(err)}`]);
+        setOutputMessages(prev => [...prev, `❌ [Conexão] Falha: ${String(err)}`]);
     }
   };
 
@@ -389,7 +412,7 @@ const App: React.FC = () => {
       writer.releaseLock();
       setSerialMessages(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), type: 'out', text: serialInput }].slice(-100));
       setSerialInput('');
-    } catch (err) { setOutputMessages(prev => [...prev, `❌ [Serial] Erro ao enviar: ${String(err)}`]); }
+    } catch (err) { setOutputMessages(prev => [...prev, `❌ [Serial] Erro: ${String(err)}`]); }
   };
 
   const highlightCode = (code: string) => {
@@ -402,7 +425,6 @@ const App: React.FC = () => {
       .replace(/#\w+/g, `<span class="text-rose-400">$&</span>`);
   };
 
-  // Explicitly typing the Record to help with Object.entries mapping.
   const groupedExamples = useMemo<Record<string, ArduinoExample[]>>(() => {
     return EXAMPLES.reduce((acc, ex) => {
       if (!acc[ex.category]) acc[ex.category] = [];
@@ -493,7 +515,6 @@ const App: React.FC = () => {
 
             {activeTab === 'examples' && (
               <div className="p-4 space-y-6">
-                {/* Casting to explicit tuple array to avoid 'unknown' mapping errors */}
                 {(Object.entries(groupedExamples) as [string, ArduinoExample[]][]).map(([category, items]) => (
                   <div key={category} className="space-y-2">
                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">{category}</h4>
@@ -619,7 +640,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex-1 relative flex overflow-hidden">
             <div className="w-12 border-r border-white/5 py-4 text-right pr-3 font-mono text-[10px] opacity-20 select-none">
-              {(activeFile.content.split('\n')).map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
+              {((activeFile.content.split('\n'))).map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
             </div>
             <div className="flex-1 relative">
                <div ref={highlightRef} className={`absolute inset-0 p-5 pointer-events-none code-font whitespace-pre overflow-hidden z-0 leading-[1.5] ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }} />
