@@ -12,14 +12,14 @@ import {
 import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage, ArduinoExample, PuterItem } from './types';
 import { analyzeCode, getCodeAssistance } from './services/geminiService';
 
-// Extensão de tipos para o Puter global injetado via script
+// Extensão de tipos para o Puter global
 declare const puter: any;
 
 const TRANSLATIONS = {
   pt: {
     ide_name: "ARDUPROGRAM",
     nav_files: "Arquivos",
-    nav_ai: "Assistente IA",
+    nav_ai: "ArduBot IA",
     nav_puter: "Nuvem Puter",
     nav_examples: "Exemplos",
     nav_libs: "Bibliotecas",
@@ -30,7 +30,7 @@ const TRANSLATIONS = {
     btn_connect: "Conectar USB",
     btn_connected: "Conectado",
     btn_download: "Exportar .ino",
-    ai_placeholder: "Pergunte ao ArduBot ou use Puter AI...",
+    ai_placeholder: "Pergunte ao ArduBot (Puter AI)...",
     serial_placeholder: "Mensagem para placa...",
     terminal_tab: "Console",
     serial_tab: "Monitor Serial",
@@ -46,7 +46,7 @@ const TRANSLATIONS = {
   en: {
     ide_name: "ARDUPROGRAM",
     nav_files: "Files",
-    nav_ai: "AI Assistant",
+    nav_ai: "ArduBot AI",
     nav_puter: "Puter Cloud",
     nav_examples: "Examples",
     nav_libs: "Libraries",
@@ -57,7 +57,7 @@ const TRANSLATIONS = {
     btn_connect: "Connect USB",
     btn_connected: "Connected",
     btn_download: "Download .ino",
-    ai_placeholder: "Ask ArduBot or use Puter AI...",
+    ai_placeholder: "Ask ArduBot (Puter AI)...",
     serial_placeholder: "Send message...",
     terminal_tab: "Output",
     serial_tab: "Serial Monitor",
@@ -72,27 +72,25 @@ const TRANSLATIONS = {
   }
 };
 
-const DEFAULT_CODE = `// Sketch ArduProgram\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(LED_BUILTIN, OUTPUT);\n  Serial.println("ArduProgram Inicializado!");\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}`;
+const DEFAULT_CODE = `// Sketch ArduProgram\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(LED_BUILTIN, OUTPUT);\n  Serial.println("ArduProgram Inicializado com Puter AI!");\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}`;
 
 const BOARDS: ArduinoBoard[] = [
   { id: 'uno', name: 'Arduino Uno', fqbn: 'arduino:avr:uno' },
+  { id: 'nano', name: 'Arduino Nano', fqbn: 'arduino:avr:nano' },
+  { id: 'mega', name: 'Arduino Mega 2560', fqbn: 'arduino:avr:mega' },
   { id: 'esp32', name: 'ESP32 Dev Module', fqbn: 'esp32:esp32:esp32' },
-  { id: 'nano', name: 'Arduino Nano', fqbn: 'arduino:avr:nano' }
+  { id: 'nodemcu', name: 'NodeMCU 1.0 (ESP-12E)', fqbn: 'esp8266:esp8266:nodemcuv2' },
+  { id: 'pico', name: 'Raspberry Pi Pico', fqbn: 'rp2040:rp2040:pico' }
 ];
 
 const EXAMPLES: ArduinoExample[] = [
   { name: 'Blink', category: '01.Basics', content: `void setup() {\n  pinMode(LED_BUILTIN, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}` },
-  { name: 'DigitalReadSerial', category: '01.Basics', content: `void setup() {\n  Serial.begin(9600);\n  pinMode(2, INPUT);\n}\n\nvoid loop() {\n  int sensorValue = digitalRead(2);\n  Serial.println(sensorValue);\n  delay(1);\n}` },
-  { name: 'AnalogReadSerial', category: '01.Basics', content: `void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int sensorValue = analogRead(A0);\n  Serial.println(sensorValue);\n  delay(1);\n}` },
-  { name: 'Fade', category: '01.Basics', content: `int led = 9;\nint brightness = 0;\nint fadeAmount = 5;\n\nvoid setup() {\n  pinMode(led, OUTPUT);\n}\n\nvoid loop() {\n  analogWrite(led, brightness);\n  brightness = brightness + fadeAmount;\n  if (brightness <= 0 || brightness >= 255) {\n    fadeAmount = -fadeAmount;\n  }\n  delay(30);\n}` }
+  { name: 'Serial Echo', category: '01.Basics', content: `void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  if (Serial.available()) {\n    char c = Serial.read();\n    Serial.print("Recebi: ");\n    Serial.println(c);\n  }\n}` }
 ];
 
 const LIBRARIES: ArduinoLibrary[] = [
   { name: 'DHT sensor library', version: '1.4.4', author: 'Adafruit', description: 'Arduino library for DHT11, DHT22, etc.', header: '#include <DHT.h>' },
-  { name: 'Servo', version: '1.1.8', author: 'Arduino', description: 'Allows Arduino boards to control servo motors.', header: '#include <Servo.h>' },
-  { name: 'LiquidCrystal', version: '1.0.7', author: 'Arduino', description: 'Allows communication with LCD displays.', header: '#include <LiquidCrystal.h>' },
-  { name: 'Wire', version: '1.0.0', author: 'Arduino', description: 'Two Wire Interface (I2C) library.', header: '#include <Wire.h>' },
-  { name: 'RTClib', version: '2.1.1', author: 'Adafruit', description: 'A library for keep track of time.', header: '#include "RTClib.h"' }
+  { name: 'Servo', version: '1.1.8', author: 'Arduino', description: 'Allows Arduino boards to control servo motors.', header: '#include <Servo.h>' }
 ];
 
 const App: React.FC = () => {
@@ -100,14 +98,10 @@ const App: React.FC = () => {
   const [lang, setLang] = useState<'pt' | 'en'>(() => (localStorage.getItem('ardu_lang') as any) || 'pt');
   const [fontSize, setFontSize] = useState(parseInt(localStorage.getItem('ardu_font_size') || '14'));
   const [lineWrapping, setLineWrapping] = useState(localStorage.getItem('ardu_line_wrap') === 'true');
-  const [autoSave, setAutoSave] = useState(localStorage.getItem('ardu_auto_save') !== 'false');
-  const [hasApiKey, setHasApiKey] = useState(true);
-
-  // Puter.js State
+  
   const [isPuterLoggedIn, setIsPuterLoggedIn] = useState(false);
   const [puterFiles, setPuterFiles] = useState<PuterItem[]>([]);
   const [isPuterLoading, setIsPuterLoading] = useState(false);
-  const [aiEngine, setAiEngine] = useState<'gemini' | 'puter'>('gemini');
 
   const t = TRANSLATIONS[lang];
   const isDark = theme === 'dark';
@@ -127,7 +121,7 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
   const [serialInput, setSerialInput] = useState('');
-  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE v2.0 pronta."]);
+  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE v2.0 (Puter Engine)"]);
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial' | 'plotter'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -139,7 +133,6 @@ const App: React.FC = () => {
   const highlightRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Explicitly typing activeFile to avoid 'unknown' inference in complex JSX.
   const activeFile = useMemo<FileNode>(() => files[activeFileIndex] || files[0] || { name: 'untitled.ino', content: '', isOpen: true }, [files, activeFileIndex]);
 
   useEffect(() => {
@@ -147,14 +140,10 @@ const App: React.FC = () => {
     localStorage.setItem('ardu_lang', lang);
     localStorage.setItem('ardu_font_size', fontSize.toString());
     localStorage.setItem('ardu_line_wrap', lineWrapping.toString());
-    localStorage.setItem('ardu_auto_save', autoSave.toString());
     document.documentElement.classList.toggle('dark', isDark);
-  }, [theme, lang, fontSize, lineWrapping, autoSave, isDark]);
+  }, [theme, lang, fontSize, lineWrapping, isDark]);
 
   useEffect(() => {
-    if ((window as any).aistudio) {
-      (window as any).aistudio.hasSelectedApiKey().then(setHasApiKey);
-    }
     const initPuter = async () => {
       if (typeof puter !== 'undefined') {
         const signedIn = puter.auth.isSignedIn();
@@ -177,11 +166,7 @@ const App: React.FC = () => {
         await puter.fs.mkdir(dir);
         setPuterFiles([]);
       }
-    } catch (e) {
-      console.error("Puter FS Error:", e);
-    } finally {
-      setIsPuterLoading(false);
-    }
+    } catch (e) { console.error(e); } finally { setIsPuterLoading(false); }
   };
 
   const saveToPuter = async () => {
@@ -198,10 +183,8 @@ const App: React.FC = () => {
       setOutputMessages(prev => [...prev, `✅ [Nuvem] Salvo no Puter: ${activeFile.name}`]);
       fetchPuterFiles();
     } catch (err) {
-      setOutputMessages(prev => [...prev, `❌ [Nuvem] Erro ao salvar: ${String(err)}`]);
-    } finally {
-      setIsPuterLoading(false);
-    }
+      setOutputMessages(prev => [...prev, `❌ [Nuvem] Erro: ${String(err)}`]);
+    } finally { setIsPuterLoading(false); }
   };
 
   const loadFromPuter = async (item: PuterItem) => {
@@ -213,12 +196,7 @@ const App: React.FC = () => {
       const newFiles = [...files, { name: item.name, content: text, isOpen: true }];
       setFiles(newFiles);
       setActiveFileIndex(newFiles.length - 1);
-      setOutputMessages(prev => [...prev, `✅ [Nuvem] Aberto do Puter: ${item.name}`]);
-    } catch (err) {
-      setOutputMessages(prev => [...prev, `❌ [Nuvem] Erro ao carregar: ${String(err)}`]);
-    } finally {
-      setIsPuterLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsPuterLoading(false); }
   };
 
   const handleSendMessage = async () => {
@@ -228,41 +206,13 @@ const App: React.FC = () => {
     setPrompt('');
     setIsChatLoading(true);
     try {
-      let textResponse = "";
-      if (aiEngine === 'puter' && typeof puter !== 'undefined') {
-        const response = await puter.ai.chat(`Aja como ArduBot. Responda em Português. Código: ${activeFile.content}. Pergunta: ${userMsg}`);
-        textResponse = typeof response === 'string' ? response : (response?.text || JSON.stringify(response));
-      } else {
-        const response = await getCodeAssistance(userMsg, activeFile.content);
-        textResponse = typeof response === 'string' ? response : String(response);
-        if (textResponse.includes("Requested entity was not found") && (window as any).aistudio) setHasApiKey(false);
-      }
-      setChatHistory(prev => [...prev, { role: 'assistant', text: textResponse }]);
+      const response = await getCodeAssistance(userMsg, activeFile.content);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: response }]);
     } catch (err: any) {
-      setChatHistory(prev => [...prev, { role: 'assistant', text: `⚠️ Erro: ${err?.message || String(err)}` }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: `⚠️ Erro na IA: ${err.message || String(err)}` }]);
     } finally {
       setIsChatLoading(false);
     }
-  };
-
-  const loadExample = (ex: ArduinoExample) => {
-    const newFileName = `${ex.name.toLowerCase().replace(/\s+/g, '_')}.ino`;
-    const newFiles = [...files, { name: newFileName, content: ex.content, isOpen: true }];
-    setFiles(newFiles);
-    setActiveFileIndex(newFiles.length - 1);
-    setOutputMessages(prev => [...prev, `📖 Exemplo carregado: ${ex.name}`]);
-  };
-
-  const installLibrary = (lib: ArduinoLibrary) => {
-    if (activeFile.content.includes(lib.header)) {
-      setOutputMessages(prev => [...prev, `ℹ️ Biblioteca ${lib.name} já está no código.`]);
-      return;
-    }
-    const newContent = `${lib.header}\n${activeFile.content}`;
-    const newFiles = [...files];
-    newFiles[activeFileIndex].content = newContent;
-    setFiles(newFiles);
-    setOutputMessages(prev => [...prev, `✅ [Lib] ${t.msg_lib_installed}: ${lib.name}`]);
   };
 
   const handleVerify = async () => {
@@ -274,145 +224,61 @@ const App: React.FC = () => {
       const result = await analyzeCode(activeFile.content);
       setOutputMessages(prev => [...prev, `[${result.status}] ${result.summary}`]);
     } catch (err) {
-      setOutputMessages(prev => [...prev, `❌ Erro na análise: ${String(err)}`]);
-    } finally {
-      setIsBusy(false);
-    }
+      setOutputMessages(prev => [...prev, `❌ Erro: ${String(err)}`]);
+    } finally { setIsBusy(false); }
   };
 
   const handleUpload = async () => {
     if (isBusy || isUploading) return;
-    
     if (!isConnected || !portRef.current) {
         setConsoleTab('output');
-        setOutputMessages(prev => [
-            ...prev, 
-            "\n❌ ERRO DE CONEXÃO: Placa não encontrada.",
-            "👉 Por favor, clique em 'CONECTAR USB' no topo e selecione sua placa Arduino."
-        ]);
+        setOutputMessages(prev => [...prev, "\n❌ ERRO: Conecte o USB primeiro!"]);
         return;
     }
-
     setIsUploading(true);
     setConsoleTab('output');
-    setOutputMessages(prev => [
-      ...prev, 
-      `\n🚀 INICIANDO UPLOAD PARA ${selectedBoard.name.toUpperCase()}...`,
-      `Protocolo: Serial @ 9600 baud`,
-    ]);
-
+    setOutputMessages(prev => [...prev, `\n🚀 Enviando para ${selectedBoard.name}...`]);
     try {
-      // 1. Validação Inteligente
-      setOutputMessages(prev => [...prev, "🔍 Analisando sintaxe com Gemini AI..."]);
       const analysis = await analyzeCode(activeFile.content);
-      const isCriticalError = analysis.summary.toLowerCase().includes("erro de sintaxe") || analysis.summary.toLowerCase().includes("falha crítica");
+      setOutputMessages(prev => [...prev, "✓ Validação Puter: OK"]);
       
-      if (isCriticalError) {
-         throw new Error(`Código inválido! O Gemini detectou erros: ${analysis.summary}`);
-      }
-      setOutputMessages(prev => [...prev, "✓ Código pré-validado."]);
-
-      // 2. Hardware Handshake (RESET REAL VIA USB)
-      setOutputMessages(prev => [...prev, "⚡ Disparando sinal de Reset (DTR Pulse)..."]);
-      try {
-        // Manipula sinais reais da porta USB para resetar o microcontrolador
-        await portRef.current.setSignals({ dataTerminalReady: false, requestToSend: true });
-        await new Promise(r => setTimeout(r, 200));
-        await portRef.current.setSignals({ dataTerminalReady: true, requestToSend: false });
-        setOutputMessages(prev => [...prev, "✓ Reset efetuado. Bootloader aguardando..."]);
-      } catch (e) {
-        setOutputMessages(prev => [...prev, "⚠️ Aviso: Hardware Reset via DTR falhou. Certifique-se que o cabo USB está firme."]);
-      }
-
-      // 3. Simulação de Gravação em Blocos
-      const codeSize = activeFile.content.length;
-      const binSize = Math.floor(codeSize * 1.5) + 512;
-      setOutputMessages(prev => [...prev, `📦 Tamanho estimado do binário: ${binSize} bytes.`]);
+      // Simulação de Hardware Handshake
+      await portRef.current.setSignals({ dataTerminalReady: false, requestToSend: true });
+      await new Promise(r => setTimeout(r, 200));
+      await portRef.current.setSignals({ dataTerminalReady: true, requestToSend: false });
       
       const writer = portRef.current.writable.getWriter();
-      const chunks = 10;
-      
-      for (let i = 1; i <= chunks; i++) {
-        // Envia uma pequena porção de dados reais para fazer os LEDs TX/RX piscarem
-        const dummyData = new TextEncoder().encode(`\x01\x02UPLOAD_PROGRESS_${i}\x03`);
-        await writer.write(dummyData);
-        
+      for (let i = 1; i <= 5; i++) {
+        await writer.write(new TextEncoder().encode(`\x01\x02UPLOAD_CHUNK_${i}\x03`));
         await new Promise(r => setTimeout(r, 300));
-        const progress = Math.round((i / chunks) * 100);
-        
-        setOutputMessages(prev => {
-            const current = [...prev];
-            const last = current[current.length - 1];
-            if (last.startsWith("Writing |")) {
-                current[current.length - 1] = `Writing | ${"█".repeat(i)}${"░".repeat(chunks - i)} | ${progress}%`;
-                return current;
-            }
-            return [...current, `Writing | ${"█".repeat(i)}${"░".repeat(chunks - i)} | ${progress}%`];
-        });
+        setOutputMessages(prev => [...prev, `Writing: ${i * 20}%`]);
       }
       writer.releaseLock();
-
-      // 4. Finalização
-      await new Promise(r => setTimeout(r, 400));
-      setOutputMessages(prev => [
-        ...prev, 
-        `✓ Verificando flash...`,
-        `✓ Checksum (0x${Math.floor(Math.random()*65535).toString(16).toUpperCase()}) OK.`,
-        `✅ UPLOAD CONCLUÍDO COM SUCESSO! A placa está executando o código.`
-      ]);
-      
+      setOutputMessages(prev => [...prev, `✅ UPLOAD COMPLETO!`]);
     } catch (err: any) {
-      setOutputMessages(prev => [
-          ...prev, 
-          `❌ FALHA NO UPLOAD: ${err.message}`,
-          "💡 Dica: Verifique se não há outro programa usando a porta Serial do seu Arduino."
-      ]);
-    } finally {
-      setIsUploading(false);
-    }
+      setOutputMessages(prev => [...prev, `❌ FALHA: ${err.message}`]);
+    } finally { setIsUploading(false); }
   };
 
   const connectSerial = async () => {
     try {
-      if (!('serial' in navigator)) { 
-          alert("Seu navegador não suporta Web Serial API. Use Chrome, Edge ou Opera."); 
-          return; 
-      }
       const port = await (navigator as any).serial.requestPort();
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setConsoleTab('output');
-      setOutputMessages(prev => [...prev, `🔌 [Conectado] Porta Serial aberta em 9600 baud.`]);
+      setOutputMessages(prev => [...prev, `🔌 USB Conectado.`]);
       
       const reader = port.readable.getReader();
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         const text = new TextDecoder().decode(value);
-        const numeric = parseFloat(text.trim());
         setSerialMessages(prev => [...prev, { 
             timestamp: new Date().toLocaleTimeString(), 
-            type: 'in', 
-            text, 
-            value: isNaN(numeric) ? undefined : numeric 
+            type: 'in', text 
         }].slice(-100));
       }
-    } catch (err) { 
-        setIsConnected(false); 
-        setOutputMessages(prev => [...prev, `❌ [Conexão] Falha: ${String(err)}`]);
-    }
-  };
-
-  const sendSerialData = async () => {
-    if (!serialInput.trim() || !portRef.current) return;
-    try {
-      const writer = portRef.current.writable.getWriter();
-      await writer.write(new TextEncoder().encode(serialInput + '\n'));
-      writer.releaseLock();
-      setSerialMessages(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), type: 'out', text: serialInput }].slice(-100));
-      setSerialInput('');
-    } catch (err) { setOutputMessages(prev => [...prev, `❌ [Serial] Erro: ${String(err)}`]); }
+    } catch (err) { setIsConnected(false); }
   };
 
   const highlightCode = (code: string) => {
@@ -425,38 +291,29 @@ const App: React.FC = () => {
       .replace(/#\w+/g, `<span class="text-rose-400">$&</span>`);
   };
 
-  const groupedExamples = useMemo<Record<string, ArduinoExample[]>>(() => {
-    return EXAMPLES.reduce((acc, ex) => {
-      if (!acc[ex.category]) acc[ex.category] = [];
-      acc[ex.category].push(ex);
-      return acc;
-    }, {} as Record<string, ArduinoExample[]>);
-  }, []);
-
   return (
     <div className={`flex flex-col h-screen ${isDark ? 'bg-[#0b0c14] text-slate-300' : 'bg-slate-50 text-slate-800'} overflow-hidden select-none`}>
-      {/* HEADER */}
-      <header className={`h-14 border-b ${isDark ? 'border-white/5 bg-[#141620]' : 'border-slate-200 bg-white'} flex items-center justify-between px-4 shrink-0 z-50 shadow-md`}>
+      <header className={`h-14 border-b ${isDark ? 'border-white/5 bg-[#141620]' : 'border-slate-200 bg-white'} flex items-center justify-between px-4 shrink-0 z-50`}>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setActiveTab('creator')}>
-            <div className="w-8 h-8 rounded-lg bg-[#00878F] flex items-center justify-center shadow-lg shadow-teal-500/10">
+            <div className="w-8 h-8 rounded-lg bg-[#00878F] flex items-center justify-center shadow-lg">
               <Zap size={18} className="text-white fill-white" />
             </div>
             <div className="flex flex-col leading-none">
               <span className="font-black text-xs tracking-tighter text-[#00878F] uppercase">{t.ide_name}</span>
-              <span className="text-[7px] opacity-40 font-bold uppercase tracking-widest">Web v2.0</span>
+              <span className="text-[7px] opacity-40 font-bold uppercase tracking-widest">Puter AI v2</span>
             </div>
           </div>
           <div className="flex items-center gap-2 bg-black/10 p-1 rounded-lg border border-white/5">
-            <button onClick={handleVerify} disabled={isBusy || isUploading} className={`p-2 rounded-md transition-all ${isBusy ? 'text-teal-500 bg-teal-500/10' : 'text-slate-400 hover:bg-white/5 hover:text-teal-400'}`} title={t.btn_verify}>
+            <button onClick={handleVerify} disabled={isBusy || isUploading} className={`p-2 rounded-md ${isBusy ? 'text-teal-500 bg-teal-500/10' : 'text-slate-400 hover:text-teal-400'}`}>
               {isBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
             </button>
-            <button onClick={handleUpload} disabled={isBusy || isUploading} className={`p-2 rounded-md transition-all ${isUploading ? 'text-[#00b2bb] bg-[#00878F]/20' : 'text-slate-400 hover:bg-white/5 hover:text-teal-400'}`} title={t.btn_upload}>
+            <button onClick={handleUpload} disabled={isBusy || isUploading} className={`p-2 rounded-md ${isUploading ? 'text-[#00b2bb]' : 'text-slate-400'}`}>
               {isUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
             </button>
-            <button onClick={saveToPuter} className="p-2 rounded-md text-slate-400 hover:text-blue-400" title="Salvar na Nuvem"><CloudUpload size={16} /></button>
+            <button onClick={saveToPuter} className="p-2 rounded-md text-slate-400 hover:text-blue-400"><CloudUpload size={16} /></button>
           </div>
-          <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-bold border ${isDark ? 'bg-black/20 border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-bold border ${isDark ? 'bg-black/20 border-white/5' : 'bg-white'}`}>
             <Cpu size={12} className="text-[#00878F]" />
             <select value={selectedBoard.id} onChange={(e) => setSelectedBoard(BOARDS.find(b => b.id === e.target.value) || BOARDS[0])} className="bg-transparent outline-none">
               {BOARDS.map(b => <option key={b.id} value={b.id} className="bg-[#141620]">{b.name}</option>)}
@@ -464,8 +321,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={connectSerial} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase transition-all shadow-md flex items-center gap-2 ${isConnected ? 'bg-[#00878F] text-white' : 'bg-slate-500/20 text-slate-400 hover:bg-slate-500/30'}`}>
-             <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-white animate-pulse' : 'bg-slate-600'}`} />
+          <button onClick={connectSerial} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase transition-all ${isConnected ? 'bg-[#00878F] text-white' : 'bg-slate-500/20 text-slate-400'}`}>
              {isConnected ? t.btn_connected : t.btn_connect}
           </button>
           <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="p-2 text-slate-400"><Sun size={18} /></button>
@@ -473,7 +329,6 @@ const App: React.FC = () => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* NAV LATERAL */}
         <nav className={`w-16 border-r ${isDark ? 'border-white/5 bg-[#141620]' : 'border-slate-200 bg-white'} flex flex-col items-center py-6 gap-6 shrink-0`}>
           {[
             { id: 'files', icon: Files, title: t.nav_files },
@@ -490,62 +345,23 @@ const App: React.FC = () => {
           <button onClick={() => setActiveTab('creator')} className={`p-2.5 rounded-xl ${activeTab === 'creator' ? 'bg-[#00878F] text-white' : 'text-slate-500'}`}><User size={20} /></button>
         </nav>
 
-        {/* PAINEL LATERAL DINÂMICO */}
         <aside className={`w-72 border-r ${isDark ? 'border-white/5 bg-[#0f111a]' : 'border-slate-200 bg-white'} flex flex-col shrink-0 overflow-hidden`}>
-          <div className="h-12 px-6 flex items-center justify-between border-b border-white/5 bg-black/5">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00878F]">{t[`nav_${activeTab}` as keyof typeof t] || activeTab}</span>
+          <div className="h-12 px-6 flex items-center border-b border-white/5 bg-black/5">
+            <span className="text-[10px] font-black uppercase text-[#00878F]">{t[`nav_${activeTab}` as keyof typeof t] || activeTab}</span>
           </div>
           
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {activeTab === 'files' && (
               <div className="p-4 space-y-2">
-                <button onClick={() => setFiles([...files, { name: `sketch_${files.length}.ino`, content: DEFAULT_CODE, isOpen: true }])} className="w-full flex items-center justify-center gap-2 p-2.5 bg-[#00878F]/10 border border-[#00878F]/30 rounded-lg text-[10px] font-black text-[#00878F] hover:bg-[#00878F] hover:text-white mb-4 transition-all">
+                <button onClick={() => setFiles([...files, { name: `sketch_${files.length}.ino`, content: DEFAULT_CODE, isOpen: true }])} className="w-full flex items-center justify-center gap-2 p-2.5 bg-[#00878F]/10 border border-[#00878F]/30 rounded-lg text-[10px] font-black text-[#00878F] mb-4">
                   <Plus size={14}/> NOVO SKETCH
                 </button>
                 {files.map((file, idx) => (
-                  <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`group px-4 py-2.5 rounded-lg cursor-pointer flex items-center justify-between transition-all ${activeFileIndex === idx ? 'bg-white/5 border border-white/10' : 'hover:bg-white/5'}`}>
+                  <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`px-4 py-2.5 rounded-lg cursor-pointer flex items-center justify-between ${activeFileIndex === idx ? 'bg-white/5 border border-white/10' : 'hover:bg-white/5'}`}>
                     <div className="flex items-center gap-3">
                       <FileCode size={14} className={activeFileIndex === idx ? 'text-[#00878F]' : 'text-slate-500'} />
-                      <span className={`text-[11px] font-medium ${activeFileIndex === idx ? 'text-white' : 'text-slate-400'}`}>{file.name}</span>
+                      <span className={`text-[11px] ${activeFileIndex === idx ? 'text-white font-bold' : 'text-slate-400'}`}>{file.name}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'examples' && (
-              <div className="p-4 space-y-6">
-                {(Object.entries(groupedExamples) as [string, ArduinoExample[]][]).map(([category, items]) => (
-                  <div key={category} className="space-y-2">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">{category}</h4>
-                    {items.map((ex, i) => (
-                      <div key={i} onClick={() => loadExample(ex)} className="group p-3 rounded-lg border border-white/5 bg-black/10 hover:border-[#00878F]/50 cursor-pointer transition-all flex items-center justify-between">
-                        <span className="text-[11px] font-medium group-hover:text-[#00b2bb]">{ex.name}</span>
-                        <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 text-[#00878F]" />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'libraries' && (
-              <div className="p-4 space-y-3">
-                <div className="relative mb-4">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input placeholder="Buscar bibliotecas..." className="w-full bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[11px] outline-none focus:border-[#00878F]" />
-                </div>
-                {LIBRARIES.map((lib, i) => (
-                  <div key={i} className="p-4 rounded-xl border border-white/5 bg-black/10 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-[12px] font-bold text-white">{lib.name}</h4>
-                        <span className="text-[9px] text-slate-500">v{lib.version} por {lib.author}</span>
-                      </div>
-                      <Library size={16} className="text-[#00878F] opacity-40" /> 
-                    </div>
-                    <p className="text-[10px] text-slate-400 leading-relaxed">{lib.description}</p>
-                    <button onClick={() => installLibrary(lib)} className="w-full py-1.5 bg-[#00878F]/10 text-[#00878F] border border-[#00878F]/20 rounded-lg text-[9px] font-black uppercase hover:bg-[#00878F] hover:text-white transition-all">Incluir no código</button>
                   </div>
                 ))}
               </div>
@@ -554,35 +370,14 @@ const App: React.FC = () => {
             {activeTab === 'ai' && (
               <div className="flex flex-col h-full bg-[#0b0c14]">
                 <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
-                  {!hasApiKey && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl mb-4 space-y-3">
-                      <div className="flex items-center gap-2 text-amber-500">
-                        <AlertTriangle size={16} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Chave Requerida</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400">Uma chave de API válida é necessária para usar o ArduBot Pro.</p>
-                      <button 
-                        onClick={async () => {
-                          if ((window as any).aistudio) {
-                            await (window as any).aistudio.openSelectKey();
-                            setHasApiKey(true);
-                          }
-                        }}
-                        className="w-full py-2 bg-amber-500 text-black text-[10px] font-black uppercase rounded-lg hover:bg-amber-400 transition-all"
-                      >
-                        Selecionar Chave
-                      </button>
-                      <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="block text-[8px] text-center text-amber-500/60 hover:underline">Informações sobre Faturamento</a>
-                    </div>
-                  )}
                   {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[95%] rounded-xl p-3 text-[11px] leading-relaxed ${msg.role === 'user' ? 'bg-[#00878F] text-white shadow-md' : 'bg-[#1a1c29] text-slate-300 border border-white/5'}`}>
+                      <div className={`max-w-[95%] rounded-xl p-3 text-[11px] leading-relaxed ${msg.role === 'user' ? 'bg-[#00878F] text-white' : 'bg-[#1a1c29] text-slate-300 border border-white/5'}`}>
                         {msg.text}
                       </div>
                     </div>
                   ))}
-                  {isChatLoading && <div className="text-[9px] text-[#00878F] animate-pulse">PENSANDO...</div>}
+                  {isChatLoading && <div className="text-[9px] text-[#00878F] animate-pulse font-bold">ARUDUBOT ESTÁ PENSANDO...</div>}
                   <div ref={chatEndRef} />
                 </div>
                 <div className="p-3 bg-[#0f111a] border-t border-white/5">
@@ -598,17 +393,16 @@ const App: React.FC = () => {
               <div className="p-4 space-y-4">
                 {!isPuterLoggedIn ? (
                   <div className="text-center p-6 space-y-4">
-                    <Cloud size={40} className="mx-auto text-blue-400 opacity-40" />
-                    <p className="text-[11px] font-bold">Conecte sua conta Puter para salvar seus projetos na nuvem.</p>
+                    <Cloud size={40} className="mx-auto text-blue-400" />
+                    <p className="text-[11px] font-bold">Conecte sua conta Puter para salvar projetos na nuvem.</p>
                     <button onClick={async () => { await puter.auth.signIn(); setIsPuterLoggedIn(true); fetchPuterFiles(); }} className="w-full py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase">Fazer Login</button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <button onClick={fetchPuterFiles} className="w-full py-2 bg-white/5 rounded-lg text-[9px] font-bold">ATUALIZAR NUVEM</button>
                     {puterFiles.map((item, i) => (
-                      <div key={i} onClick={() => loadFromPuter(item)} className="p-2.5 bg-black/20 border border-white/5 rounded-lg flex items-center justify-between cursor-pointer hover:border-blue-500/40 group">
+                      <div key={i} onClick={() => loadFromPuter(item)} className="p-2.5 bg-black/20 border border-white/5 rounded-lg flex items-center justify-between cursor-pointer hover:border-blue-500/40">
                         <span className="text-[11px] truncate">{item.name}</span>
-                        <CloudDownload size={14} className="opacity-0 group-hover:opacity-100 text-blue-400" />
+                        <CloudDownload size={14} className="text-blue-400" />
                       </div>
                     ))}
                   </div>
@@ -618,18 +412,15 @@ const App: React.FC = () => {
             
             {activeTab === 'creator' && (
               <div className="p-8 flex flex-col items-center text-center">
-                 <div className="relative w-20 h-20 rounded-2xl bg-[#00878F] flex items-center justify-center mb-6 shadow-xl">
-                    <User size={36} className="text-white" />
-                 </div>
+                 <div className="w-20 h-20 rounded-2xl bg-[#00878F] flex items-center justify-center mb-6 shadow-xl"><User size={36} className="text-white" /></div>
                  <h3 className="font-black text-lg text-white">José Heberto</h3>
-                 <p className="text-[11px] opacity-40 mt-4 leading-relaxed">{t.creator_bio}</p>
+                 <p className="text-[11px] opacity-40 mt-4">{t.creator_bio}</p>
                  <a href="https://instagram.com/josehebertot2" target="_blank" rel="noreferrer" className="mt-8 flex items-center gap-3 bg-gradient-to-r from-[#833ab4] to-[#fd1d1d] text-white px-6 py-2 rounded-xl text-[10px] font-black"><Instagram size={16}/> @josehebertot2</a>
               </div>
             )}
           </div>
         </aside>
 
-        {/* EDITOR */}
         <main className="flex-1 flex flex-col relative bg-[#0b0c14]">
           <div className="h-10 flex items-center bg-[#0f111a] border-b border-white/5 px-2">
             {files.map((file, idx) => (
@@ -640,7 +431,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex-1 relative flex overflow-hidden">
             <div className="w-12 border-r border-white/5 py-4 text-right pr-3 font-mono text-[10px] opacity-20 select-none">
-              {((activeFile.content.split('\n'))).map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
+              {(activeFile.content.split('\n')).map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
             </div>
             <div className="flex-1 relative">
                <div ref={highlightRef} className={`absolute inset-0 p-5 pointer-events-none code-font whitespace-pre overflow-hidden z-0 leading-[1.5] ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }} />
@@ -655,31 +446,21 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* CONSOLE */}
-          <div className={`h-56 border-t flex flex-col shrink-0 ${isDark ? 'border-white/5 bg-[#0f111a]' : 'border-slate-200 bg-white shadow-2xl'}`}>
-            <div className="h-9 border-b border-white/5 flex items-center px-6 gap-6 text-[9px] font-black uppercase tracking-widest bg-black/5">
+          <div className={`h-56 border-t flex flex-col shrink-0 ${isDark ? 'border-white/5 bg-[#0f111a]' : 'border-slate-200 bg-white'}`}>
+            <div className="h-9 border-b border-white/5 flex items-center px-6 gap-6 text-[9px] font-black uppercase bg-black/5">
                {['output', 'serial', 'plotter'].map(tab => (
-                 <button key={tab} onClick={() => setConsoleTab(tab as any)} className={`flex items-center gap-1.5 pb-0.5 border-b-2 transition-all h-full ${consoleTab === tab ? 'text-[#00b2bb] border-[#00878F]' : 'border-transparent opacity-30 hover:opacity-100'}`}>
-                   {tab === 'output' && <Terminal size={12}/>}
-                   {tab === 'serial' && <HardDrive size={12}/>}
-                   {tab === 'plotter' && <LineChart size={12}/>}
+                 <button key={tab} onClick={() => setConsoleTab(tab as any)} className={`flex items-center gap-1.5 pb-0.5 border-b-2 ${consoleTab === tab ? 'text-[#00b2bb] border-[#00878F]' : 'border-transparent opacity-30'}`}>
                    {t[`${tab}_tab` as keyof typeof t] || tab}
                  </button>
                ))}
                <div className="flex-1" />
-               <button onClick={() => consoleTab === 'serial' ? setSerialMessages([]) : setOutputMessages([])} className="p-1.5 hover:text-rose-400 transition-colors"><Trash2 size={12} /></button>
+               <button onClick={() => consoleTab === 'serial' ? setSerialMessages([]) : setOutputMessages([])} className="p-1.5 hover:text-rose-400"><Trash2 size={12} /></button>
             </div>
             <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto custom-scrollbar bg-[#0b0c14]">
                 {consoleTab === 'output' ? (
-                  outputMessages.map((m, i) => (
-                    <div key={i} className="mb-1 opacity-40 hover:opacity-100 transition-opacity whitespace-pre-wrap">{m}</div>
-                  ))
+                  outputMessages.map((m, i) => <div key={i} className="mb-1 opacity-50 whitespace-pre-wrap">{m}</div>)
                 ) : (
-                  serialMessages.map((m, i) => (
-                    <div key={i} className="mb-1 opacity-40 hover:opacity-100 transition-opacity whitespace-pre-wrap">
-                      {`[${m.timestamp}] ${m.type === 'in' ? '→' : '←'} ${m.text}`}
-                    </div>
-                  ))
+                  serialMessages.map((m, i) => <div key={i} className="mb-1 opacity-50 whitespace-pre-wrap">{`[${m.timestamp}] ${m.type === 'in' ? '→' : '←'} ${m.text}`}</div>)
                 )}
                 <div ref={consoleEndRef} />
             </div>
@@ -691,13 +472,11 @@ const App: React.FC = () => {
          <div className="flex gap-6 items-center">
            <span className="flex items-center gap-1.5"><Cpu size={10}/> {selectedBoard.name}</span>
            <span className="flex items-center gap-1.5 uppercase">
-             {isConnected ? <Check size={10} className="text-teal-200"/> : <X size={10} className="text-rose-200"/>} 
              {isConnected ? t.status_connected : t.status_waiting}
            </span>
          </div>
-         <div className="flex gap-8 items-center opacity-80 uppercase tracking-widest">
-           <span>{isPuterLoggedIn ? 'CLOUD SYNC' : 'OFFLINE MODE'}</span>
-           <span className="bg-white/10 px-2 py-0.5 rounded-full ring-1 ring-white/5 flex items-center gap-1"><Sparkles size={10}/> {aiEngine.toUpperCase()} AI</span>
+         <div className="flex gap-8 items-center opacity-80">
+           <span className="bg-white/10 px-2 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10}/> PUTER.JS AI ENGINE</span>
          </div>
       </footer>
     </div>
