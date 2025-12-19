@@ -5,9 +5,9 @@ import {
   Box, Trash2, Search, Terminal, MessageSquare,
   User, Instagram, Sun, Moon, ArrowRight, Send, Sparkles,
   Cpu, HardDrive, Type as TypeIcon,
-  WrapText, Save, Globe, Key, Loader2
+  Save, Globe, Key, Loader2, Download, BookOpen, LineChart
 } from 'lucide-react';
-import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage } from './types';
+import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage, ArduinoExample } from './types';
 import { analyzeCode, getCodeAssistance } from './services/geminiService';
 
 const TRANSLATIONS = {
@@ -15,6 +15,7 @@ const TRANSLATIONS = {
     ide_name: "ARDUPROGRAM",
     nav_files: "Arquivos",
     nav_ai: "IA Assistente",
+    nav_examples: "Exemplos",
     nav_libs: "Bibliotecas",
     nav_creator: "Créditos",
     nav_settings: "Ajustes",
@@ -22,6 +23,7 @@ const TRANSLATIONS = {
     btn_upload: "Carregar na Placa",
     btn_connect: "Conectar USB",
     btn_connected: "USB Ativa",
+    btn_download: "Baixar .ino",
     settings_editor: "Editor",
     settings_font_size: "Tamanho Fonte",
     settings_line_wrap: "Quebra de Linha",
@@ -33,9 +35,10 @@ const TRANSLATIONS = {
     ai_no_key_desc: "Para usar a IA, você precisa conectar sua própria chave do Google AI Studio. É gratuito para desenvolvedores.",
     ai_btn_connect: "Ativar com minha Chave",
     ai_billing_info: "Saiba mais sobre faturamento e limites",
-    serial_placeholder: "Enviar comando para o Arduino...",
+    serial_placeholder: "Enviar comando...",
     terminal_tab: "Console de Saída",
     serial_tab: "Monitor Serial",
+    plotter_tab: "Serial Plotter",
     footer_lines: "Linhas",
     footer_chars: "Caracteres",
     status_waiting: "Aguardando USB",
@@ -45,13 +48,14 @@ const TRANSLATIONS = {
     msg_uploading: "Carregando...",
     msg_success: "Sucesso: O código parece correto!",
     msg_upload_success: "Carregamento concluído.",
-    msg_lib_installed: "Biblioteca adicionada ao cabeçalho!",
+    msg_lib_installed: "Biblioteca adicionada!",
     creator_bio: "Engenheiro focado em tornar a eletrônica acessível para todos através da web."
   },
   en: {
     ide_name: "ARDUPROGRAM",
     nav_files: "Files",
     nav_ai: "AI Assistant",
+    nav_examples: "Examples",
     nav_libs: "Libraries",
     nav_creator: "Credits",
     nav_settings: "Settings",
@@ -59,6 +63,7 @@ const TRANSLATIONS = {
     btn_upload: "Upload to Board",
     btn_connect: "Connect USB",
     btn_connected: "USB Connected",
+    btn_download: "Download .ino",
     settings_editor: "Editor",
     settings_font_size: "Font Size",
     settings_line_wrap: "Line Wrap",
@@ -70,9 +75,10 @@ const TRANSLATIONS = {
     ai_no_key_desc: "To use the AI, you need to connect your own Google AI Studio key. It's free for developers.",
     ai_btn_connect: "Activate with my Key",
     ai_billing_info: "Learn more about billing and limits",
-    serial_placeholder: "Send command to Arduino...",
+    serial_placeholder: "Send command...",
     terminal_tab: "Output Console",
     serial_tab: "Serial Monitor",
+    plotter_tab: "Serial Plotter",
     footer_lines: "Lines",
     footer_chars: "Chars",
     status_waiting: "Waiting USB",
@@ -82,24 +88,18 @@ const TRANSLATIONS = {
     msg_uploading: "Uploading...",
     msg_success: "Success: Code looks good!",
     msg_upload_success: "Done uploading.",
-    msg_lib_installed: "Library added to header!",
+    msg_lib_installed: "Library added!",
     creator_bio: "Engineer focused on making electronics accessible to everyone via web."
   }
 };
 
-const DEFAULT_CODE = `void setup() {
-  // Inicialização
-  Serial.begin(9600);
-  pinMode(LED_BUILTIN, OUTPUT);
-}
+const DEFAULT_CODE = `void setup() {\n  Serial.begin(9600);\n  pinMode(LED_BUILTIN, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}`;
 
-void loop() {
-  // Código principal
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(1000);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(1000);
-}`;
+const EXAMPLES: ArduinoExample[] = [
+  { name: 'Blink', category: 'Basics', content: `void setup() {\n  pinMode(LED_BUILTIN, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(500);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(500);\n}` },
+  { name: 'SerialRead', category: 'Basics', content: `void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  if (Serial.available()) {\n    char c = Serial.read();\n    Serial.print("Recebido: ");\n    Serial.println(c);\n  }\n}` },
+  { name: 'AnalogPlot', category: 'Plotter', content: `void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int val = analogRead(A0);\n  Serial.println(val);\n  delay(50);\n}` }
+];
 
 const BOARDS: ArduinoBoard[] = [
   { id: 'uno', name: 'Arduino Uno', fqbn: 'arduino:avr:uno' },
@@ -110,7 +110,6 @@ const BOARDS: ArduinoBoard[] = [
 const LIBRARIES: ArduinoLibrary[] = [
   { name: 'DHT sensor', version: '1.4.3', author: 'Adafruit', description: 'Sensor de Temperatura e Umidade.', header: '#include <DHT.h>' },
   { name: 'Servo', version: '1.1.8', author: 'Arduino', description: 'Controle de Servo Motores.', header: '#include <Servo.h>' },
-  { name: 'WiFiManager', version: '2.0.15', author: 'tzapu', description: 'Configuração WiFi dinâmica.', header: '#include <WiFiManager.h>' },
   { name: 'LiquidCrystal I2C', version: '1.1.2', author: 'Frank de Brabander', description: 'Display LCD via I2C.', header: '#include <LiquidCrystal_I2C.h>' }
 ];
 
@@ -140,8 +139,8 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
   const [serialInput, setSerialInput] = useState('');
-  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE inicializada com sucesso."]);
-  const [consoleTab, setConsoleTab] = useState<'output' | 'serial'>('output');
+  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE iniciada com sucesso."]);
+  const [consoleTab, setConsoleTab] = useState<'output' | 'serial' | 'plotter'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -216,9 +215,7 @@ const App: React.FC = () => {
     setIsBusy(true);
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `[LOG] ${t.msg_compiling} (${activeFile.name})`]);
-    
     const result = await analyzeCode(activeFile.content);
-    
     setTimeout(() => {
       setOutputMessages(prev => [...prev, `[${result.status}] ${result.summary}`]);
       setIsBusy(false);
@@ -231,23 +228,19 @@ const App: React.FC = () => {
       setOutputMessages(prev => [...prev, "[ERRO] Nenhuma placa conectada. Conecte via USB primeiro."]);
       return;
     }
-
     setIsUploading(true);
     setUploadProgress(10);
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `[UPLOAD] Iniciando processo para ${selectedBoard.name}...`]);
 
-    // Simulação técnica do avrdude / esptool
     const steps = [
-      { p: 20, m: `[LOG] ${t.msg_compiling}..` },
-      { p: 40, m: `[LOG] Sketch otimizado. Tamanho: ${Math.floor(Math.random()*2000)+400} bytes.` },
-      { p: 60, m: `[AVRDUDE] Tentando abrir porta serial... OK` },
-      { p: 80, m: `[AVRDUDE] Gravando na memória flash: [##########          ] 50%` },
-      { p: 95, m: `[AVRDUDE] Verificando integridade... OK` }
+      { p: 30, m: `[LOG] Compilando sketch...` },
+      { p: 60, m: `[AVRDUDE] Gravando na memória flash...` },
+      { p: 90, m: `[AVRDUDE] Verificando...` }
     ];
 
     for (const step of steps) {
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 800));
       setUploadProgress(step.p);
       setOutputMessages(prev => [...prev, step.m]);
     }
@@ -255,191 +248,202 @@ const App: React.FC = () => {
     setTimeout(() => {
       setUploadProgress(100);
       setOutputMessages(prev => [...prev, `[SISTEMA] ${t.msg_upload_success}`]);
-      setTimeout(() => {
-        setIsUploading(false);
-        setUploadProgress(0);
-      }, 500);
+      setTimeout(() => { setIsUploading(false); setUploadProgress(0); }, 500);
     }, 800);
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([activeFile.content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const connectSerial = async () => {
     try {
-      if (!('serial' in navigator)) {
-        alert("Seu navegador não suporta Web Serial. Use Chrome ou Edge.");
-        return;
-      }
+      if (!('serial' in navigator)) { alert("Navegador sem suporte a Web Serial."); return; }
       const port = await (navigator as any).serial.requestPort();
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setOutputMessages(prev => [...prev, `[SERIAL] Porta aberta com sucesso a 9600 baud.`]);
+      setOutputMessages(prev => [...prev, `[SERIAL] Porta aberta a 9600 baud.`]);
 
       const reader = port.readable.getReader();
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         const text = new TextDecoder().decode(value);
-        setSerialMessages(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), type: 'in', text }]);
+        const numeric = parseFloat(text.trim());
+        setSerialMessages(prev => [...prev, { 
+          timestamp: new Date().toLocaleTimeString(), 
+          type: 'in', 
+          text,
+          value: isNaN(numeric) ? undefined : numeric
+        }].slice(-50));
       }
-    } catch (err) { 
-      setIsConnected(false); 
-      setOutputMessages(prev => [...prev, `[ERRO] Falha ao conectar ou porta fechada pelo usuário.`]);
-    }
+    } catch (err) { setIsConnected(false); }
   };
 
   const sendSerialData = async () => {
     if (!portRef.current || !serialInput) return;
-    try {
-      const writer = portRef.current.writable.getWriter();
-      await writer.write(new TextEncoder().encode(serialInput + '\n'));
-      writer.releaseLock();
-      setSerialMessages(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), type: 'out', text: serialInput }]);
-      setSerialInput('');
-    } catch (e) {
-      setOutputMessages(prev => [...prev, `[ERRO] Erro ao enviar dados seriais.`]);
-    }
+    const writer = portRef.current.writable.getWriter();
+    await writer.write(new TextEncoder().encode(serialInput + '\n'));
+    writer.releaseLock();
+    setSerialMessages(prev => [...prev, { timestamp: new Date().toLocaleTimeString(), type: 'out', text: serialInput }].slice(-50));
+    setSerialInput('');
   };
 
   const highlightCode = (code: string) => {
     return (code || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\b(void|int|float|char|bool|long|unsigned|const|static|if|else|for|while|return|switch|case|break|byte|word|String)\b/g, `<span class="text-blue-500 font-bold">$1</span>`)
-      .replace(/\b(setup|loop|pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|Serial|println|print|begin|available|read|write|millis)\b/g, `<span class="text-purple-500 font-bold">$1</span>`)
-      .replace(/\/\/.*/g, `<span class="text-slate-400 italic">$&</span>`)
-      .replace(/\b(HIGH|LOW|INPUT|OUTPUT|INPUT_PULLUP|LED_BUILTIN)\b/g, `<span class="text-orange-500">$1</span>`);
+      .replace(/\b(void|int|float|char|bool|long|unsigned|const|static|if|else|for|while|return|switch|case|break|byte|word|String|uint8_t|uint16_t|uint32_t|boolean)\b/g, `<span class="text-sky-500 font-bold">$1</span>`)
+      .replace(/\b(setup|loop|pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|Serial|println|print|begin|available|read|write|millis|micros|abs|min|max|map)\b/g, `<span class="text-teal-400 font-bold">$1</span>`)
+      .replace(/\/\/.*/g, `<span class="text-slate-500 italic">$&</span>`)
+      .replace(/\b(HIGH|LOW|INPUT|OUTPUT|INPUT_PULLUP|LED_BUILTIN)\b/g, `<span class="text-orange-400">$1</span>`)
+      .replace(/#\w+/g, `<span class="text-rose-400">$&</span>`);
+  };
+
+  const openExample = (example: ArduinoExample) => {
+    const fileName = `${example.name.toLowerCase()}.ino`;
+    const exists = files.findIndex(f => f.name === fileName);
+    if (exists !== -1) {
+      setActiveFileIndex(exists);
+    } else {
+      const newFiles = [...files, { name: fileName, content: example.content, isOpen: true }];
+      setFiles(newFiles);
+      setActiveFileIndex(newFiles.length - 1);
+    }
+    setActiveTab('files');
   };
 
   return (
-    <div className={`flex flex-col h-screen ${isDark ? 'bg-[#0f172a] text-slate-300' : 'bg-white text-slate-800'} overflow-hidden`}>
-      {/* CABEÇALHO */}
-      <header className={`h-12 border-b ${isDark ? 'border-white/10 bg-[#1e293b]' : 'border-slate-200 bg-slate-50'} flex items-center justify-between px-3 shrink-0 relative z-50`}>
+    <div className={`flex flex-col h-screen ${isDark ? 'bg-[#0f111a] text-slate-300' : 'bg-white text-slate-800'} overflow-hidden`}>
+      {/* HEADER */}
+      <header className={`h-12 border-b ${isDark ? 'border-white/5 bg-[#181a25]' : 'border-slate-200 bg-slate-50'} flex items-center justify-between px-3 shrink-0 relative z-50`}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-2">
-            <Zap size={18} className="text-[#2563eb]" fill="currentColor" />
-            <span className="font-black text-sm tracking-tighter text-[#2563eb]">{t.ide_name}</span>
+            <Zap size={18} className="text-teal-500" fill="currentColor" />
+            <span className="font-black text-sm tracking-tighter text-teal-500">{t.ide_name}</span>
           </div>
-          <div className="flex items-center gap-1 border-l border-white/10 pl-3">
-            <button 
-              onClick={handleVerify} 
-              title={t.btn_verify} 
-              disabled={isBusy || isUploading} 
-              className={`p-2 rounded transition-colors ${isBusy ? 'animate-pulse text-blue-500' : 'text-slate-400 hover:text-[#2563eb] hover:bg-black/5'}`}
-            >
+          <div className="flex items-center gap-1 border-l border-white/5 pl-3">
+            <button onClick={handleVerify} disabled={isBusy} className={`p-2 rounded transition-all ${isBusy ? 'text-teal-500 animate-pulse' : 'text-slate-400 hover:bg-white/5 hover:text-teal-500'}`} title={t.btn_verify}>
               {isBusy ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             </button>
-            <button 
-              onClick={handleUpload} 
-              title={t.btn_upload} 
-              disabled={isBusy || isUploading} 
-              className={`p-2 rounded transition-colors ${isUploading ? 'text-blue-500' : 'text-slate-400 hover:text-[#2563eb] hover:bg-black/5'}`}
-            >
+            <button onClick={handleUpload} disabled={isUploading} className={`p-2 rounded transition-all ${isUploading ? 'text-teal-500' : 'text-slate-400 hover:bg-white/5 hover:text-teal-500'}`} title={t.btn_upload}>
               {isUploading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
             </button>
+            <button onClick={handleDownload} className="p-2 text-slate-400 hover:bg-white/5 hover:text-teal-500 rounded transition-all" title={t.btn_download}>
+              <Download size={18} />
+            </button>
           </div>
-          <div className={`flex items-center gap-2 rounded px-3 py-1 text-[11px] font-bold border ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'}`}>
-            <Cpu size={12} className="text-blue-500" />
+          <div className={`flex items-center gap-2 rounded px-3 py-1 text-[10px] font-bold border ${isDark ? 'bg-black/40 border-white/5' : 'bg-white border-slate-200'}`}>
+            <Cpu size={12} className="text-teal-500" />
             <select value={selectedBoard.id} onChange={(e) => setSelectedBoard(BOARDS.find(b => b.id === e.target.value) || BOARDS[0])} className="bg-transparent outline-none cursor-pointer">
-              {BOARDS.map(b => <option key={b.id} value={b.id} className="bg-[#1e293b]">{b.name}</option>)}
+              {BOARDS.map(b => <option key={b.id} value={b.id} className="bg-[#181a25]">{b.name}</option>)}
             </select>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={connectSerial} className={`px-4 py-1 rounded text-[10px] font-black uppercase transition-all shadow-sm ${isConnected ? 'bg-blue-600 text-white' : 'bg-slate-500/20 text-slate-400'}`}>
+          <button onClick={connectSerial} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${isConnected ? 'bg-teal-600 text-white' : 'bg-slate-500/20 text-slate-400 hover:bg-slate-500/30'}`}>
             {isConnected ? t.btn_connected : t.btn_connect}
           </button>
-          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="p-2 text-slate-400 hover:text-blue-500 transition-colors">
+          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="p-2 text-slate-400 hover:text-teal-500">
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
-        
-        {/* Barra de Progresso de Upload */}
         {isUploading && (
-          <div className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-900/20 overflow-hidden">
-            <div 
-              className="h-full bg-blue-500 transition-all duration-300 ease-out" 
-              style={{ width: `${uploadProgress}%` }}
-            />
+          <div className="absolute bottom-0 left-0 w-full h-[2px] bg-teal-900/20">
+            <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
           </div>
         )}
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* BARRA DE NAVEGAÇÃO LATERAL */}
-        <nav className={`w-14 border-r ${isDark ? 'border-white/5 bg-[#0f172a]' : 'border-slate-200 bg-slate-50'} flex flex-col items-center py-6 gap-6 shrink-0`}>
+        {/* SIDEBAR NAVIGATION */}
+        <nav className={`w-14 border-r ${isDark ? 'border-white/5 bg-[#0f111a]' : 'border-slate-200 bg-slate-50'} flex flex-col items-center py-6 gap-5 shrink-0`}>
           {[
             { id: 'files', icon: Files, title: t.nav_files },
             { id: 'ai', icon: MessageSquare, title: t.nav_ai },
+            { id: 'examples', icon: BookOpen, title: t.nav_examples },
             { id: 'libraries', icon: Box, title: t.nav_libs },
             { id: 'creator', icon: User, title: t.nav_creator },
             { id: 'settings', icon: Settings, title: t.nav_settings },
           ].map(tab => (
-            <button key={tab.id} title={tab.title} onClick={() => setActiveTab(tab.id as TabType)} className={`p-2.5 rounded-xl transition-all ${activeTab === tab.id ? 'bg-[#2563eb] text-white' : 'text-slate-500 hover:text-[#2563eb]'}`}>
-              <tab.icon size={22} />
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as TabType)} className={`p-2.5 rounded-xl transition-all ${activeTab === tab.id ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/20' : 'text-slate-500 hover:text-teal-500 hover:bg-teal-500/5'}`} title={tab.title}>
+              <tab.icon size={20} />
             </button>
           ))}
         </nav>
 
-        {/* PAINEL LATERAL DE CONTEÚDO */}
-        <aside className={`w-80 border-r ${isDark ? 'border-white/5 bg-[#1e293b]' : 'border-slate-200 bg-white'} flex flex-col shrink-0 overflow-hidden`}>
-          <div className="h-10 px-4 flex items-center justify-between border-b border-white/5 bg-black/5">
+        {/* SIDEBAR CONTENT */}
+        <aside className={`w-72 border-r ${isDark ? 'border-white/5 bg-[#141620]' : 'border-slate-200 bg-white'} flex flex-col shrink-0 overflow-hidden`}>
+          <div className="h-10 px-4 flex items-center justify-between border-b border-white/5 bg-black/10">
             <span className="text-[10px] font-black uppercase tracking-widest opacity-50">{t[`nav_${activeTab}` as keyof typeof t] || activeTab}</span>
           </div>
           
           <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {activeTab === 'files' && (
+              <div className="flex flex-col p-2">
+                <button onClick={() => setFiles([...files, { name: `sketch_${files.length}.ino`, content: DEFAULT_CODE, isOpen: true }])} className="m-2 mb-4 flex items-center justify-center gap-2 p-2 border border-dashed border-slate-500/30 rounded-lg text-[11px] font-bold hover:border-teal-500 hover:text-teal-500 transition-all">
+                  <Plus size={14}/> Novo Arquivo
+                </button>
+                {files.map((file, idx) => (
+                  <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`group px-3 py-2 rounded-lg mb-1 text-[12px] cursor-pointer flex items-center justify-between transition-all ${activeFileIndex === idx ? 'bg-teal-500/10 text-teal-400' : 'hover:bg-black/20'}`}>
+                    <div className="flex items-center gap-2">
+                      <FileCode size={14} className={activeFileIndex === idx ? 'text-teal-500' : 'text-slate-500'} />
+                      <span className="truncate max-w-[160px]">{file.name}</span>
+                    </div>
+                    {files.length > 1 && <X size={12} className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity" onClick={(e) => { e.stopPropagation(); setFiles(files.filter((_, i) => i !== idx)); if(activeFileIndex >= idx) setActiveFileIndex(Math.max(0, activeFileIndex-1)); }} />}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'examples' && (
+              <div className="p-4 space-y-6">
+                {['Basics', 'Plotter'].map(cat => (
+                  <div key={cat} className="space-y-2">
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{cat}</h4>
+                    {EXAMPLES.filter(ex => ex.category === cat).map(ex => (
+                      <button key={ex.name} onClick={() => openExample(ex)} className="w-full text-left px-3 py-2.5 rounded-lg bg-black/20 border border-white/5 hover:border-teal-500/50 hover:bg-teal-500/5 transition-all flex items-center gap-3">
+                        <div className="w-6 h-6 rounded bg-teal-500/20 flex items-center justify-center"><BookOpen size={12} className="text-teal-500" /></div>
+                        <span className="text-[12px] font-bold">{ex.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {activeTab === 'ai' && (
-              <div className="flex flex-col h-full bg-[#0f172a]">
+              <div className="flex flex-col h-full bg-[#0f111a]">
                 {!hasAiKey ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
-                      <Key size={32} className="text-blue-500" />
-                    </div>
-                    <h3 className="text-white font-bold text-sm mb-3">{t.ai_no_key_title}</h3>
-                    <p className="text-[11px] opacity-60 mb-6 leading-relaxed">
-                      {t.ai_no_key_desc}
-                    </p>
-                    <button 
-                      onClick={handleOpenKeySelect}
-                      className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
-                    >
-                      <Sparkles size={14} /> {t.ai_btn_connect}
-                    </button>
-                    <a 
-                      href="https://ai.google.dev/gemini-api/docs/billing" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="mt-6 text-[10px] text-blue-500 hover:underline flex items-center gap-1.5"
-                    >
-                      <Globe size={12}/> {t.ai_billing_info}
-                    </a>
+                    <div className="w-14 h-14 bg-teal-500/10 rounded-2xl flex items-center justify-center mb-6"><Key size={28} className="text-teal-500" /></div>
+                    <h3 className="text-white font-bold text-sm mb-2">{t.ai_no_key_title}</h3>
+                    <p className="text-[11px] opacity-50 mb-6 leading-relaxed">{t.ai_no_key_desc}</p>
+                    <button onClick={handleOpenKeySelect} className="w-full py-3 bg-teal-600 text-white rounded-xl text-[11px] font-black uppercase hover:bg-teal-700 transition-all shadow-lg flex items-center justify-center gap-2"><Sparkles size={14} /> {t.ai_btn_connect}</button>
                   </div>
                 ) : (
                   <>
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                      {chatHistory.length === 0 && (
-                         <div className="opacity-30 text-[11px] text-center mt-4">Nenhuma mensagem ainda.</div>
-                      )}
                       {chatHistory.map((msg, i) => (
                         <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                          <div className={`max-w-[90%] rounded-xl p-3 text-[12px] ${msg.role === 'user' ? 'bg-[#2563eb] text-white' : 'bg-[#1e293b] text-slate-300 border border-white/5'}`}>
-                            {msg.text}
-                          </div>
+                          <div className={`max-w-[90%] rounded-2xl p-3 text-[12px] ${msg.role === 'user' ? 'bg-teal-600 text-white' : 'bg-black/40 text-slate-300 border border-white/5'}`}>{msg.text}</div>
                         </div>
                       ))}
-                      {isChatLoading && <div className="text-[10px] text-blue-500 font-bold animate-pulse px-2">Gemini está pensando...</div>}
+                      {isChatLoading && <div className="text-[10px] text-teal-500 font-bold animate-pulse px-2">Gemini pensando...</div>}
                       <div ref={chatEndRef} />
                     </div>
                     <div className="p-3 border-t border-white/5">
-                      <div className="flex gap-2 bg-[#1e293b] rounded-lg p-1 border border-white/10 focus-within:border-blue-500 transition-all">
-                        <input 
-                          value={prompt} 
-                          onChange={e => setPrompt(e.target.value)} 
-                          onKeyDown={e => e.key === 'Enter' && handleSendMessage()} 
-                          placeholder={t.ai_placeholder} 
-                          className="flex-1 bg-transparent px-2 py-1.5 text-[12px] text-white outline-none" 
-                        />
-                        <button onClick={handleSendMessage} disabled={isChatLoading} className="p-2 bg-[#2563eb] text-white rounded-md hover:bg-blue-600 transition-colors">
-                          <Send size={16} />
-                        </button>
+                      <div className="flex gap-2 bg-black/40 rounded-xl p-1 border border-white/5 focus-within:border-teal-500 transition-all">
+                        <input value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder={t.ai_placeholder} className="flex-1 bg-transparent px-2 py-2 text-[12px] outline-none" />
+                        <button onClick={handleSendMessage} disabled={isChatLoading} className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"><Send size={16} /></button>
                       </div>
                     </div>
                   </>
@@ -447,152 +451,138 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'files' && (
-              <div className="flex flex-col">
-                <button onClick={() => setFiles([...files, { name: `sketch_${files.length}.ino`, content: DEFAULT_CODE, isOpen: true }])} className="m-4 flex items-center justify-center gap-2 p-2 border border-dashed border-slate-500/30 rounded text-[11px] font-bold hover:border-blue-500 transition-all"><Plus size={14}/> Novo Arquivo</button>
-                {files.map((file, idx) => (
-                  <div key={idx} onClick={() => setActiveFileIndex(idx)} className={`px-5 py-3 text-[13px] cursor-pointer flex items-center justify-between transition-all ${activeFileIndex === idx ? 'bg-blue-500/10 text-blue-400 border-r-2 border-blue-500' : 'hover:bg-black/5'}`}>
-                    <div className="flex items-center gap-3">
-                      <FileCode size={14} /> <span>{file.name}</span>
-                    </div>
-                    {files.length > 1 && <X size={14} className="hover:text-red-500" onClick={(e) => { e.stopPropagation(); setFiles(files.filter((_, i) => i !== idx)); if(activeFileIndex >= idx) setActiveFileIndex(Math.max(0, activeFileIndex-1)); }} />}
-                  </div>
-                ))}
-              </div>
-            )}
-
             {activeTab === 'libraries' && (
               <div className="p-4 space-y-4">
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-2.5 opacity-30" />
-                  <input value={searchLib} onChange={e => setSearchLib(e.target.value)} placeholder="Pesquisar..." className="w-full bg-black/10 border border-white/5 rounded px-3 py-2 pl-9 text-[12px] outline-none focus:border-blue-500" />
+                  <input value={searchLib} onChange={e => setSearchLib(e.target.value)} placeholder="Pesquisar..." className="w-full bg-black/30 border border-white/5 rounded-lg px-3 py-2 pl-9 text-[12px] outline-none focus:border-teal-500" />
                 </div>
                 {LIBRARIES.filter(l => l.name.toLowerCase().includes(searchLib.toLowerCase())).map((lib, i) => (
-                  <div key={i} className="p-3 bg-black/5 border border-white/5 rounded hover:border-blue-500/50 transition-all">
-                    <div className="flex justify-between font-bold text-blue-500 text-[12px] mb-1"><span>{lib.name}</span> <span className="text-[10px] opacity-40">{lib.version}</span></div>
-                    <p className="text-[11px] opacity-60 mb-3">{lib.description}</p>
-                    <button onClick={() => {
-                       const n = [...files];
-                       n[activeFileIndex].content = lib.header + "\n" + n[activeFileIndex].content;
-                       setFiles(n);
-                       setOutputMessages(prev => [...prev, `[SISTEMA] ${t.msg_lib_installed}`]);
-                    }} className="w-full py-2 bg-blue-500 text-white text-[10px] font-black rounded hover:bg-blue-600 transition-all">ADICIONAR</button>
+                  <div key={i} className="p-3 bg-black/20 border border-white/5 rounded-lg hover:border-teal-500/40 transition-all">
+                    <div className="flex justify-between font-bold text-teal-400 text-[12px] mb-1"><span>{lib.name}</span><span className="text-[10px] opacity-40">{lib.version}</span></div>
+                    <p className="text-[11px] opacity-50 mb-3">{lib.description}</p>
+                    <button onClick={() => { 
+                      const n = [...files]; n[activeFileIndex].content = lib.header + "\n" + n[activeFileIndex].content; 
+                      setFiles(n); setOutputMessages(prev => [...prev, `[BIB] ${t.msg_lib_installed}: ${lib.name}`]);
+                    }} className="w-full py-2 bg-teal-600/20 text-teal-400 text-[10px] font-black rounded-lg hover:bg-teal-600 hover:text-white transition-all uppercase">Instalar</button>
                   </div>
                 ))}
               </div>
             )}
-
+            
             {activeTab === 'creator' && (
               <div className="p-8 flex flex-col items-center text-center">
-                 <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 to-purple-500 flex items-center justify-center mb-6 shadow-xl">
-                    <User size={48} className="text-white" />
-                 </div>
+                 <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center mb-6 shadow-xl ring-4 ring-teal-500/20"><User size={40} className="text-white" /></div>
                  <h3 className="font-bold text-base">José Heberto Torres da Costa</h3>
-                 <p className="text-[11px] opacity-60 mt-4 leading-relaxed px-4">{t.creator_bio}</p>
-                 <div className="mt-8 flex flex-col gap-3 w-full">
-                    <a href="https://instagram.com/josehebertot2" target="_blank" className="flex items-center justify-center gap-3 bg-[#E1306C] text-white px-6 py-2.5 rounded-full text-[12px] font-bold shadow-lg hover:scale-105 transition-all"><Instagram size={18}/> @josehebertot2</a>
-                 </div>
+                 <p className="text-[11px] opacity-50 mt-4 leading-relaxed">{t.creator_bio}</p>
+                 <a href="https://instagram.com/josehebertot2" target="_blank" className="mt-8 flex items-center justify-center gap-3 bg-[#E1306C] text-white px-6 py-2.5 rounded-full text-[12px] font-bold shadow-lg hover:scale-105 transition-all"><Instagram size={18}/> @josehebertot2</a>
               </div>
             )}
-            
+
             {activeTab === 'settings' && (
                <div className="p-6 space-y-8">
                   <div className="space-y-4">
-                     <span className="text-[11px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2"><TypeIcon size={14}/> {t.settings_editor}</span>
+                     <span className="text-[10px] font-black opacity-40 uppercase tracking-widest flex items-center gap-2"><TypeIcon size={14}/> {t.settings_editor}</span>
                      <div className="flex items-center justify-between text-[12px]">
                         <span>{t.settings_font_size}</span>
-                        <div className="flex items-center gap-2">
-                           <input type="number" value={fontSize} onChange={e => setFontSize(Math.max(8, parseInt(e.target.value)))} className="w-12 bg-black/20 rounded px-1 py-1 text-center outline-none border border-white/10" />
-                           <span className="opacity-40">px</span>
-                        </div>
+                        <input type="number" value={fontSize} onChange={e => setFontSize(Math.max(8, parseInt(e.target.value)))} className="w-12 bg-black/40 rounded px-1 py-1 text-center border border-white/5" />
                      </div>
                      <label className="flex items-center justify-between cursor-pointer">
                         <span className="text-[12px]">{t.settings_line_wrap}</span>
-                        <input type="checkbox" checked={lineWrapping} onChange={e => setLineWrapping(e.target.checked)} className="w-4 h-4 accent-blue-500" />
+                        <input type="checkbox" checked={lineWrapping} onChange={e => setLineWrapping(e.target.checked)} className="w-4 h-4 accent-teal-500" />
                      </label>
                   </div>
-                  
                   <div className="space-y-4">
-                     <span className="text-[11px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2"><Globe size={14}/> {t.settings_lang}</span>
-                     <select value={lang} onChange={e => setLang(e.target.value as any)} className={`w-full rounded p-2 text-[12px] outline-none border ${isDark ? 'bg-black/20 border-white/10' : 'bg-white border-slate-200'}`}>
+                     <span className="text-[10px] font-black opacity-40 uppercase tracking-widest flex items-center gap-2"><Globe size={14}/> {t.settings_lang}</span>
+                     <select value={lang} onChange={e => setLang(e.target.value as any)} className={`w-full rounded-lg p-2 text-[12px] outline-none border ${isDark ? 'bg-black/40 border-white/5' : 'bg-white border-slate-200'}`}>
                         <option value="pt">Português (BR)</option>
                         <option value="en">English (US)</option>
                      </select>
-                  </div>
-
-                  <div className="space-y-4">
-                     <span className="text-[11px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2"><Save size={14}/> {t.settings_system}</span>
-                     <label className="flex items-center justify-between cursor-pointer">
-                        <span className="text-[12px]">{t.settings_autosave}</span>
-                        <input type="checkbox" checked={autoSave} onChange={e => setAutoSave(e.target.checked)} className="w-4 h-4 accent-blue-500" />
-                     </label>
                   </div>
                </div>
             )}
           </div>
         </aside>
 
-        {/* ÁREA DO EDITOR DE CÓDIGO */}
-        <main className="flex-1 flex flex-col relative">
-          <div className={`h-8 border-b flex items-center px-4 shrink-0 ${isDark ? 'border-white/5 bg-[#1e293b]' : 'border-slate-200 bg-slate-50'}`}>
-            <span className="text-[11px] font-bold text-blue-500 flex items-center gap-2"><FileCode size={12}/> {activeFile.name}</span>
+        {/* EDITOR AREA */}
+        <main className="flex-1 flex flex-col relative bg-[#0d0f17]">
+          {/* TABS BAR (ARDUINO 2.0 STYLE) */}
+          <div className={`h-10 flex items-center overflow-x-auto no-scrollbar shrink-0 ${isDark ? 'bg-[#141620]' : 'bg-slate-100'}`}>
+            {files.map((file, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => setActiveFileIndex(idx)} 
+                className={`h-full min-w-[120px] px-4 flex items-center justify-between gap-3 text-[11px] font-bold cursor-pointer transition-all border-r border-white/5 ${activeFileIndex === idx ? (isDark ? 'bg-[#0d0f17] text-teal-400 border-t-2 border-t-teal-500' : 'bg-white text-teal-600 border-t-2 border-t-teal-500 shadow-sm') : 'opacity-50 grayscale hover:grayscale-0 hover:bg-black/10'}`}
+              >
+                <div className="flex items-center gap-2"><FileCode size={12}/> {file.name}</div>
+                {files.length > 1 && <X size={10} className="hover:text-red-500" onClick={(e) => { e.stopPropagation(); setFiles(files.filter((_, i) => i !== idx)); if(activeFileIndex >= idx) setActiveFileIndex(Math.max(0, activeFileIndex-1)); }} />}
+              </div>
+            ))}
           </div>
 
-          <div className="flex-1 relative overflow-hidden flex">
-            {/* Números de Linha */}
-            <div className={`w-12 border-r py-4 text-right pr-3 font-mono text-[11px] opacity-20 bg-black/5 overflow-hidden`}>
+          <div className="flex-1 relative flex">
+            <div className={`w-12 border-r border-white/5 py-4 text-right pr-3 font-mono text-[11px] opacity-20 bg-black/10 select-none`}>
               {(activeFile.content || '').split('\n').map((_, i) => <div key={i} style={{ height: `${fontSize * 1.5}px` }}>{i + 1}</div>)}
             </div>
-            
-            {/* Editor Textarea + Highlight */}
-            <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative">
                <div ref={highlightRef} className={`absolute inset-0 p-4 pointer-events-none code-font whitespace-pre overflow-hidden z-0 leading-normal ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }} />
                <textarea 
                   value={activeFile.content} 
                   disabled={isUploading}
                   onChange={e => { const n = [...files]; n[activeFileIndex].content = e.target.value; setFiles(n); }} 
-                  onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; if (highlightRef.current) highlightRef.current.scrollLeft = e.currentTarget.scrollLeft; }} 
+                  onScroll={e => { if (highlightRef.current) { highlightRef.current.scrollTop = e.currentTarget.scrollTop; highlightRef.current.scrollLeft = e.currentTarget.scrollLeft; } }} 
                   spellCheck={false} 
-                  className={`absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-blue-500 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none leading-normal ${lineWrapping ? 'whitespace-pre-wrap' : ''} ${isUploading ? 'opacity-50' : ''}`} 
+                  className={`absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-teal-500 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none leading-normal ${lineWrapping ? 'whitespace-pre-wrap' : ''} ${isUploading ? 'opacity-50' : ''}`} 
                   style={{ fontSize: `${fontSize}px` }} 
                />
             </div>
           </div>
 
-          {/* PAINEL DE CONSOLE / MONITOR SERIAL */}
-          <div className={`h-48 border-t flex flex-col shrink-0 ${isDark ? 'border-white/5 bg-[#1e293b]' : 'border-slate-200 bg-white'}`}>
-            <div className="h-8 border-b flex items-center px-4 gap-6 text-[10px] font-black uppercase tracking-widest">
-               <button onClick={() => setConsoleTab('output')} className={`flex items-center gap-2 pb-0.5 border-b-2 transition-all ${consoleTab === 'output' ? 'text-blue-500 border-blue-500' : 'border-transparent opacity-40 hover:opacity-100'}`}><Terminal size={12}/> {t.terminal_tab}</button>
-               <button onClick={() => setConsoleTab('serial')} className={`flex items-center gap-2 pb-0.5 border-b-2 transition-all ${consoleTab === 'serial' ? 'text-blue-500 border-blue-500' : 'border-transparent opacity-40 hover:opacity-100'}`}><HardDrive size={12}/> {t.serial_tab}</button>
+          {/* BOTTOM PANELS */}
+          <div className={`h-56 border-t flex flex-col shrink-0 ${isDark ? 'border-white/5 bg-[#141620]' : 'border-slate-200 bg-white'}`}>
+            <div className="h-9 border-b border-white/5 flex items-center px-4 gap-6 text-[10px] font-black uppercase tracking-widest overflow-hidden">
+               {['output', 'serial', 'plotter'].map(tab => (
+                 <button key={tab} onClick={() => setConsoleTab(tab as any)} className={`flex items-center gap-2 pb-0.5 border-b-2 transition-all h-full ${consoleTab === tab ? 'text-teal-500 border-teal-500' : 'border-transparent opacity-40 hover:opacity-100'}`}>
+                   {tab === 'output' && <Terminal size={12}/>}
+                   {tab === 'serial' && <HardDrive size={12}/>}
+                   {tab === 'plotter' && <LineChart size={12}/>}
+                   {t[`${tab}_tab` as keyof typeof t] || tab}
+                 </button>
+               ))}
                <div className="flex-1" />
-               <Trash2 size={12} className="cursor-pointer opacity-30 hover:opacity-100 transition-opacity" onClick={() => consoleTab === 'output' ? setOutputMessages([]) : setSerialMessages([])} />
+               <Trash2 size={12} className="cursor-pointer opacity-30 hover:opacity-100" onClick={() => consoleTab === 'serial' ? setSerialMessages([]) : setOutputMessages([])} />
             </div>
             
-            {consoleTab === 'serial' && (
-              <div className="h-8 border-b flex items-center px-4 gap-2 bg-black/5">
-                <input 
-                   value={serialInput} 
-                   onChange={e => setSerialInput(e.target.value)} 
-                   onKeyDown={e => e.key === 'Enter' && sendSerialData()} 
-                   placeholder={t.serial_placeholder} 
-                   className="flex-1 bg-transparent text-[11px] font-mono outline-none" 
-                />
-                <button onClick={sendSerialData} className="text-blue-500 text-[10px] font-bold hover:underline">ENVIAR</button>
-              </div>
-            )}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {consoleTab === 'serial' && (
+                <div className="h-8 border-b border-white/5 flex items-center px-4 gap-2 bg-black/20">
+                  <input value={serialInput} onChange={e => setSerialInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendSerialData()} placeholder={t.serial_placeholder} className="flex-1 bg-transparent text-[11px] font-mono outline-none text-teal-400" />
+                  <button onClick={sendSerialData} className="text-teal-500 text-[10px] font-black hover:underline uppercase">Enviar</button>
+                </div>
+              )}
 
-            <div className="flex-1 p-4 font-mono text-[12px] overflow-y-auto custom-scrollbar bg-black/10">
-              {(consoleTab === 'output' ? outputMessages : serialMessages.map(m => `[${m.timestamp}] ${m.type === 'in' ? 'RX <' : 'TX >'} ${m.text}`)).map((m, i) => (
-                <div key={i} className={`mb-0.5 ${m.includes('[ERRO]') ? 'text-red-400 font-bold' : m.includes('[UPLOAD]') ? 'text-blue-400' : 'opacity-60'}`}>{m}</div>
-              ))}
-              <div ref={consoleEndRef} />
+              <div className="flex-1 p-3 font-mono text-[12px] overflow-y-auto custom-scrollbar bg-black/30">
+                {consoleTab === 'plotter' ? (
+                  <div className="h-full flex items-end gap-1 px-2">
+                    {serialMessages.filter(m => m.value !== undefined).slice(-40).map((m, i) => (
+                      <div key={i} className="bg-teal-500/50 w-full min-w-[4px] rounded-t-sm transition-all" style={{ height: `${Math.min(100, (m.value || 0) / 1023 * 100)}%` }} title={`${m.value}`} />
+                    ))}
+                    {serialMessages.filter(m => m.value !== undefined).length === 0 && <div className="text-[11px] opacity-30 w-full text-center mb-10">Envie dados numéricos via Serial para plotar.</div>}
+                  </div>
+                ) : (
+                  (consoleTab === 'output' ? outputMessages : serialMessages.map(m => `[${m.timestamp}] ${m.type === 'in' ? 'RX <' : 'TX >'} ${m.text}`)).map((m, i) => (
+                    <div key={i} className={`mb-0.5 whitespace-pre-wrap ${m.includes('[ERRO]') ? 'text-red-400 font-bold' : m.includes('[UPLOAD]') ? 'text-teal-400' : 'opacity-60'}`}>{m}</div>
+                  ))
+                )}
+                <div ref={consoleEndRef} />
+              </div>
             </div>
           </div>
         </main>
       </div>
 
-      {/* RODAPÉ */}
-      <footer className="h-6 bg-blue-600 text-white flex items-center justify-between px-4 text-[10px] font-bold shrink-0 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      {/* FOOTER */}
+      <footer className="h-6 bg-teal-600 text-white flex items-center justify-between px-4 text-[10px] font-bold shrink-0 shadow-xl">
          <div className="flex gap-4">
            <span className="flex items-center gap-1.5"><Cpu size={11}/> {selectedBoard.name}</span>
            <span className="opacity-50">|</span>
@@ -601,7 +591,7 @@ const App: React.FC = () => {
          <div className="flex gap-6 opacity-80">
            <span>{t.footer_lines}: {(activeFile.content || '').split('\n').length}</span>
            <span>{t.footer_chars}: {activeFile.content.length}</span>
-           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> {hasAiKey ? 'IA Online' : 'IA Offline'}</span>
+           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> {hasAiKey ? 'AI PRO' : 'AI BASIC'}</span>
          </div>
       </footer>
     </div>
