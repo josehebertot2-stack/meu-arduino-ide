@@ -31,10 +31,6 @@ const TRANSLATIONS = {
     settings_autosave: "Salvar Automático",
     settings_lang: "Idioma da IDE",
     ai_placeholder: "Pergunte algo sobre seu código...",
-    ai_no_key_title: "Assistente IA Desativado",
-    ai_no_key_desc: "Para usar a IA, você precisa conectar sua própria chave do Google AI Studio. É gratuito para desenvolvedores.",
-    ai_btn_connect: "Ativar com minha Chave",
-    ai_billing_info: "Saiba mais sobre faturamento e limites",
     serial_placeholder: "Enviar comando...",
     terminal_tab: "Console de Saída",
     serial_tab: "Monitor Serial",
@@ -71,10 +67,6 @@ const TRANSLATIONS = {
     settings_autosave: "Auto Save",
     settings_lang: "IDE Language",
     ai_placeholder: "Ask something about your code...",
-    ai_no_key_title: "AI Assistant Disabled",
-    ai_no_key_desc: "To use the AI, you need to connect your own Google AI Studio key. It's free for developers.",
-    ai_btn_connect: "Activate with my Key",
-    ai_billing_info: "Learn more about billing and limits",
     serial_placeholder: "Send command...",
     terminal_tab: "Output Console",
     serial_tab: "Serial Monitor",
@@ -124,7 +116,6 @@ const App: React.FC = () => {
   const isDark = theme === 'dark';
 
   const [activeTab, setActiveTab] = useState<TabType>('files');
-  const [hasAiKey, setHasAiKey] = useState(false);
   const [files, setFiles] = useState<FileNode[]>(() => {
     try {
       const saved = localStorage.getItem('ardu_files');
@@ -139,7 +130,7 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
   const [serialInput, setSerialInput] = useState('');
-  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE iniciada com sucesso."]);
+  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE inicializada com sucesso."]);
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial' | 'plotter'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -154,16 +145,6 @@ const App: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const activeFile = useMemo(() => files[activeFileIndex] || files[0], [files, activeFileIndex]);
-
-  useEffect(() => {
-    const checkKey = async () => {
-      if (window.aistudio?.hasSelectedApiKey) {
-        const has = await window.aistudio.hasSelectedApiKey();
-        setHasAiKey(has);
-      }
-    };
-    checkKey();
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('ardu_theme', theme);
@@ -186,15 +167,8 @@ const App: React.FC = () => {
     if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
-  const handleOpenKeySelect = async () => {
-    if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      setHasAiKey(true);
-    }
-  };
-
   const handleSendMessage = async () => {
-    if (!prompt.trim() || isChatLoading || !hasAiKey) return;
+    if (!prompt.trim() || isChatLoading) return;
     const userMsg = prompt;
     setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
     setPrompt('');
@@ -422,32 +396,27 @@ const App: React.FC = () => {
 
             {activeTab === 'ai' && (
               <div className="flex flex-col h-full bg-[#0f111a]">
-                {!hasAiKey ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                    <div className="w-14 h-14 bg-teal-500/10 rounded-2xl flex items-center justify-center mb-6"><Key size={28} className="text-teal-500" /></div>
-                    <h3 className="text-white font-bold text-sm mb-2">{t.ai_no_key_title}</h3>
-                    <p className="text-[11px] opacity-50 mb-6 leading-relaxed">{t.ai_no_key_desc}</p>
-                    <button onClick={handleOpenKeySelect} className="w-full py-3 bg-teal-600 text-white rounded-xl text-[11px] font-black uppercase hover:bg-teal-700 transition-all shadow-lg flex items-center justify-center gap-2"><Sparkles size={14} /> {t.ai_btn_connect}</button>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                  {chatHistory.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full opacity-30 text-center p-6">
+                      <Sparkles size={32} className="mb-4 text-teal-500" />
+                      <p className="text-[11px]">Como posso ajudar com seu código hoje?</p>
+                    </div>
+                  )}
+                  {chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[90%] rounded-2xl p-3 text-[12px] ${msg.role === 'user' ? 'bg-teal-600 text-white' : 'bg-black/40 text-slate-300 border border-white/5'}`}>{msg.text}</div>
+                    </div>
+                  ))}
+                  {isChatLoading && <div className="text-[10px] text-teal-500 font-bold animate-pulse px-2">Gemini pensando...</div>}
+                  <div ref={chatEndRef} />
+                </div>
+                <div className="p-3 border-t border-white/5">
+                  <div className="flex gap-2 bg-black/40 rounded-xl p-1 border border-white/5 focus-within:border-teal-500 transition-all">
+                    <input value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder={t.ai_placeholder} className="flex-1 bg-transparent px-2 py-2 text-[12px] outline-none" />
+                    <button onClick={handleSendMessage} disabled={isChatLoading} className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"><Send size={16} /></button>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                      {chatHistory.map((msg, i) => (
-                        <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                          <div className={`max-w-[90%] rounded-2xl p-3 text-[12px] ${msg.role === 'user' ? 'bg-teal-600 text-white' : 'bg-black/40 text-slate-300 border border-white/5'}`}>{msg.text}</div>
-                        </div>
-                      ))}
-                      {isChatLoading && <div className="text-[10px] text-teal-500 font-bold animate-pulse px-2">Gemini pensando...</div>}
-                      <div ref={chatEndRef} />
-                    </div>
-                    <div className="p-3 border-t border-white/5">
-                      <div className="flex gap-2 bg-black/40 rounded-xl p-1 border border-white/5 focus-within:border-teal-500 transition-all">
-                        <input value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder={t.ai_placeholder} className="flex-1 bg-transparent px-2 py-2 text-[12px] outline-none" />
-                        <button onClick={handleSendMessage} disabled={isChatLoading} className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"><Send size={16} /></button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                </div>
               </div>
             )}
 
@@ -591,7 +560,7 @@ const App: React.FC = () => {
          <div className="flex gap-6 opacity-80">
            <span>{t.footer_lines}: {(activeFile.content || '').split('\n').length}</span>
            <span>{t.footer_chars}: {activeFile.content.length}</span>
-           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> {hasAiKey ? 'AI PRO' : 'AI BASIC'}</span>
+           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> AI ATIVA</span>
          </div>
       </footer>
     </div>
