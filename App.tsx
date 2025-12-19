@@ -5,7 +5,7 @@ import {
   Box, Trash2, Search, Terminal, MessageSquare,
   User, Instagram, Sun, Moon, ArrowRight, Send, Sparkles,
   Cpu, HardDrive, Type as TypeIcon,
-  Save, Globe, Key, Loader2, Download, BookOpen, LineChart
+  Save, Globe, Loader2, Download, BookOpen, LineChart
 } from 'lucide-react';
 import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage, ArduinoExample } from './types';
 import { analyzeCode, getCodeAssistance } from './services/geminiService';
@@ -30,7 +30,7 @@ const TRANSLATIONS = {
     settings_system: "Sistema",
     settings_autosave: "Salvar Automático",
     settings_lang: "Idioma da IDE",
-    ai_placeholder: "Pergunte algo sobre seu código...",
+    ai_placeholder: "Como posso ajudar com seu código?",
     serial_placeholder: "Enviar comando...",
     terminal_tab: "Console de Saída",
     serial_tab: "Monitor Serial",
@@ -66,7 +66,7 @@ const TRANSLATIONS = {
     settings_system: "System",
     settings_autosave: "Auto Save",
     settings_lang: "IDE Language",
-    ai_placeholder: "Ask something about your code...",
+    ai_placeholder: "How can I help with your code?",
     serial_placeholder: "Send command...",
     terminal_tab: "Output Console",
     serial_tab: "Serial Monitor",
@@ -400,7 +400,7 @@ const App: React.FC = () => {
                   {chatHistory.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full opacity-30 text-center p-6">
                       <Sparkles size={32} className="mb-4 text-teal-500" />
-                      <p className="text-[11px]">Como posso ajudar com seu código hoje?</p>
+                      <p className="text-[11px]">Olá! Como posso ajudar com seu código hoje?</p>
                     </div>
                   )}
                   {chatHistory.map((msg, i) => (
@@ -408,7 +408,7 @@ const App: React.FC = () => {
                       <div className={`max-w-[90%] rounded-2xl p-3 text-[12px] ${msg.role === 'user' ? 'bg-teal-600 text-white' : 'bg-black/40 text-slate-300 border border-white/5'}`}>{msg.text}</div>
                     </div>
                   ))}
-                  {isChatLoading && <div className="text-[10px] text-teal-500 font-bold animate-pulse px-2">Gemini pensando...</div>}
+                  {isChatLoading && <div className="text-[10px] text-teal-500 font-bold animate-pulse px-2">Processando...</div>}
                   <div ref={chatEndRef} />
                 </div>
                 <div className="p-3 border-t border-white/5">
@@ -475,7 +475,6 @@ const App: React.FC = () => {
 
         {/* EDITOR AREA */}
         <main className="flex-1 flex flex-col relative bg-[#0d0f17]">
-          {/* TABS BAR (ARDUINO 2.0 STYLE) */}
           <div className={`h-10 flex items-center overflow-x-auto no-scrollbar shrink-0 ${isDark ? 'bg-[#141620]' : 'bg-slate-100'}`}>
             {files.map((file, idx) => (
               <div 
@@ -536,7 +535,7 @@ const App: React.FC = () => {
                     {serialMessages.filter(m => m.value !== undefined).slice(-40).map((m, i) => (
                       <div key={i} className="bg-teal-500/50 w-full min-w-[4px] rounded-t-sm transition-all" style={{ height: `${Math.min(100, (m.value || 0) / 1023 * 100)}%` }} title={`${m.value}`} />
                     ))}
-                    {serialMessages.filter(m => m.value !== undefined).length === 0 && <div className="text-[11px] opacity-30 w-full text-center mb-10">Envie dados numéricos via Serial para plotar.</div>}
+                    {serialMessages.filter(m => m.value !== undefined).length === 0 && <div className="text-[11px] opacity-30 w-full text-center mb-10">Conecte um dispositivo para plotar dados.</div>}
                   </div>
                 ) : (
                   (consoleTab === 'output' ? outputMessages : serialMessages.map(m => `[${m.timestamp}] ${m.type === 'in' ? 'RX <' : 'TX >'} ${m.text}`)).map((m, i) => (
@@ -550,7 +549,6 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {/* FOOTER */}
       <footer className="h-6 bg-teal-600 text-white flex items-center justify-between px-4 text-[10px] font-bold shrink-0 shadow-xl">
          <div className="flex gap-4">
            <span className="flex items-center gap-1.5"><Cpu size={11}/> {selectedBoard.name}</span>
@@ -560,7 +558,7 @@ const App: React.FC = () => {
          <div className="flex gap-6 opacity-80">
            <span>{t.footer_lines}: {(activeFile.content || '').split('\n').length}</span>
            <span>{t.footer_chars}: {activeFile.content.length}</span>
-           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> AI ATIVA</span>
+           <span className="flex items-center gap-1.5 uppercase tracking-tighter"><Zap size={10}/> IA ATIVA</span>
          </div>
       </footer>
     </div>
