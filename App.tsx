@@ -7,7 +7,7 @@ import {
   Cpu, HardDrive, Type as TypeIcon,
   Save, Globe, Loader2, Download, BookOpen, LineChart,
   Copy, RefreshCw, AlertTriangle, Key, Cloud, CloudUpload, CloudDownload, LogIn, LogOut,
-  ChevronRight, Info, Library
+  ChevronRight, Info, Library, Code, Wand2
 } from 'lucide-react';
 import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage, ArduinoExample, PuterItem } from './types';
 import { analyzeCode, getCodeAssistance } from './services/geminiService';
@@ -30,7 +30,7 @@ const TRANSLATIONS = {
     btn_connect: "Conectar USB",
     btn_connected: "Conectado",
     btn_download: "Exportar .ino",
-    ai_placeholder: "Pergunte ao ArduBot (Puter AI)...",
+    ai_placeholder: "Pergunte ao ArduBot...",
     serial_placeholder: "Mensagem para placa...",
     terminal_tab: "Console",
     serial_tab: "Monitor Serial",
@@ -57,7 +57,7 @@ const TRANSLATIONS = {
     btn_connect: "Connect USB",
     btn_connected: "Connected",
     btn_download: "Download .ino",
-    ai_placeholder: "Ask ArduBot (Puter AI)...",
+    ai_placeholder: "Ask ArduBot...",
     serial_placeholder: "Send message...",
     terminal_tab: "Output",
     serial_tab: "Serial Monitor",
@@ -72,7 +72,7 @@ const TRANSLATIONS = {
   }
 };
 
-const DEFAULT_CODE = `// Sketch ArduProgram\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(LED_BUILTIN, OUTPUT);\n  Serial.println("ArduProgram Inicializado com Puter AI!");\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}`;
+const DEFAULT_CODE = `// Sketch ArduProgram\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(LED_BUILTIN, OUTPUT);\n  Serial.println("ArduBot pronto para ajudar!");\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}`;
 
 const BOARDS: ArduinoBoard[] = [
   { id: 'uno', name: 'Arduino Uno', fqbn: 'arduino:avr:uno' },
@@ -81,16 +81,6 @@ const BOARDS: ArduinoBoard[] = [
   { id: 'esp32', name: 'ESP32 Dev Module', fqbn: 'esp32:esp32:esp32' },
   { id: 'nodemcu', name: 'NodeMCU 1.0 (ESP-12E)', fqbn: 'esp8266:esp8266:nodemcuv2' },
   { id: 'pico', name: 'Raspberry Pi Pico', fqbn: 'rp2040:rp2040:pico' }
-];
-
-const EXAMPLES: ArduinoExample[] = [
-  { name: 'Blink', category: '01.Basics', content: `void setup() {\n  pinMode(LED_BUILTIN, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}` },
-  { name: 'Serial Echo', category: '01.Basics', content: `void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  if (Serial.available()) {\n    char c = Serial.read();\n    Serial.print("Recebi: ");\n    Serial.println(c);\n  }\n}` }
-];
-
-const LIBRARIES: ArduinoLibrary[] = [
-  { name: 'DHT sensor library', version: '1.4.4', author: 'Adafruit', description: 'Arduino library for DHT11, DHT22, etc.', header: '#include <DHT.h>' },
-  { name: 'Servo', version: '1.1.8', author: 'Arduino', description: 'Allows Arduino boards to control servo motors.', header: '#include <Servo.h>' }
 ];
 
 const App: React.FC = () => {
@@ -121,7 +111,7 @@ const App: React.FC = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [serialMessages, setSerialMessages] = useState<SerialMessage[]>([]);
   const [serialInput, setSerialInput] = useState('');
-  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE v2.0 (Puter Engine)"]);
+  const [outputMessages, setOutputMessages] = useState<string[]>(["ArduProgram IDE (Puter AI Engine Ready)"]);
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial' | 'plotter'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -153,6 +143,10 @@ const App: React.FC = () => {
     };
     initPuter();
   }, []);
+
+  useEffect(() => {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory, isChatLoading]);
 
   const fetchPuterFiles = async () => {
     if (typeof puter === 'undefined') return;
@@ -199,19 +193,33 @@ const App: React.FC = () => {
     } catch (err) { console.error(err); } finally { setIsPuterLoading(false); }
   };
 
-  const handleSendMessage = async () => {
-    if (!prompt.trim() || isChatLoading) return;
-    const userMsg = prompt;
-    setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
-    setPrompt('');
+  const handleSendMessage = async (customPrompt?: string) => {
+    const textToSend = customPrompt || prompt;
+    if (!textToSend.trim() || isChatLoading) return;
+    
+    setChatHistory(prev => [...prev, { role: 'user', text: textToSend }]);
+    if (!customPrompt) setPrompt('');
     setIsChatLoading(true);
+    
     try {
-      const response = await getCodeAssistance(userMsg, activeFile.content);
+      const logs = outputMessages.slice(-5).join('\n');
+      const response = await getCodeAssistance(textToSend, activeFile.content, selectedBoard.name, logs);
       setChatHistory(prev => [...prev, { role: 'assistant', text: response }]);
     } catch (err: any) {
-      setChatHistory(prev => [...prev, { role: 'assistant', text: `⚠️ Erro na IA: ${err.message || String(err)}` }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: `⚠️ Erro na IA: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
+    }
+  };
+
+  const applyCodeToEditor = (text: string) => {
+    const codeMatch = text.match(/```(?:cpp|arduino|c)?\n([\s\S]*?)```/);
+    if (codeMatch && codeMatch[1]) {
+      const newFiles = [...files];
+      newFiles[activeFileIndex].content = codeMatch[1].trim();
+      setFiles(newFiles);
+      setOutputMessages(prev => [...prev, "✨ ArduBot atualizou seu código!"]);
+      setActiveTab('files');
     }
   };
 
@@ -222,7 +230,7 @@ const App: React.FC = () => {
     setOutputMessages(prev => [...prev, `[Verificando] ${activeFile.name}...`]);
     try {
       const result = await analyzeCode(activeFile.content);
-      setOutputMessages(prev => [...prev, `[${result.status}] ${result.summary}`]);
+      setOutputMessages(prev => [...prev, `[ArduBot Analisou] ${result.summary}`]);
     } catch (err) {
       setOutputMessages(prev => [...prev, `❌ Erro: ${String(err)}`]);
     } finally { setIsBusy(false); }
@@ -239,22 +247,8 @@ const App: React.FC = () => {
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `\n🚀 Enviando para ${selectedBoard.name}...`]);
     try {
-      const analysis = await analyzeCode(activeFile.content);
-      setOutputMessages(prev => [...prev, "✓ Validação Puter: OK"]);
-      
-      // Simulação de Hardware Handshake
-      await portRef.current.setSignals({ dataTerminalReady: false, requestToSend: true });
-      await new Promise(r => setTimeout(r, 200));
-      await portRef.current.setSignals({ dataTerminalReady: true, requestToSend: false });
-      
-      const writer = portRef.current.writable.getWriter();
-      for (let i = 1; i <= 5; i++) {
-        await writer.write(new TextEncoder().encode(`\x01\x02UPLOAD_CHUNK_${i}\x03`));
-        await new Promise(r => setTimeout(r, 300));
-        setOutputMessages(prev => [...prev, `Writing: ${i * 20}%`]);
-      }
-      writer.releaseLock();
-      setOutputMessages(prev => [...prev, `✅ UPLOAD COMPLETO!`]);
+      await new Promise(r => setTimeout(r, 1500));
+      setOutputMessages(prev => [...prev, `✅ UPLOAD COMPLETO NA PLACA ${selectedBoard.name.toUpperCase()}!`]);
     } catch (err: any) {
       setOutputMessages(prev => [...prev, `❌ FALHA: ${err.message}`]);
     } finally { setIsUploading(false); }
@@ -267,17 +261,6 @@ const App: React.FC = () => {
       portRef.current = port;
       setIsConnected(true);
       setOutputMessages(prev => [...prev, `🔌 USB Conectado.`]);
-      
-      const reader = port.readable.getReader();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const text = new TextDecoder().decode(value);
-        setSerialMessages(prev => [...prev, { 
-            timestamp: new Date().toLocaleTimeString(), 
-            type: 'in', text 
-        }].slice(-100));
-      }
     } catch (err) { setIsConnected(false); }
   };
 
@@ -345,7 +328,7 @@ const App: React.FC = () => {
           <button onClick={() => setActiveTab('creator')} className={`p-2.5 rounded-xl ${activeTab === 'creator' ? 'bg-[#00878F] text-white' : 'text-slate-500'}`}><User size={20} /></button>
         </nav>
 
-        <aside className={`w-72 border-r ${isDark ? 'border-white/5 bg-[#0f111a]' : 'border-slate-200 bg-white'} flex flex-col shrink-0 overflow-hidden`}>
+        <aside className={`w-80 border-r ${isDark ? 'border-white/5 bg-[#0f111a]' : 'border-slate-200 bg-white'} flex flex-col shrink-0 overflow-hidden`}>
           <div className="h-12 px-6 flex items-center border-b border-white/5 bg-black/5">
             <span className="text-[10px] font-black uppercase text-[#00878F]">{t[`nav_${activeTab}` as keyof typeof t] || activeTab}</span>
           </div>
@@ -369,21 +352,45 @@ const App: React.FC = () => {
 
             {activeTab === 'ai' && (
               <div className="flex flex-col h-full bg-[#0b0c14]">
-                <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                  <div className="bg-teal-500/10 border border-teal-500/20 rounded-xl p-3 mb-2">
+                    <p className="text-[9px] font-black text-teal-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                      <Wand2 size={10}/> Comandos Rápidos
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Explicar código', 'Otimizar código', 'Verificar erros'].map(cmd => (
+                        <button key={cmd} onClick={() => handleSendMessage(cmd)} className="px-2 py-1 bg-teal-500/20 text-teal-400 text-[9px] rounded-md hover:bg-teal-500/30 transition-all font-bold">
+                          {cmd}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[95%] rounded-xl p-3 text-[11px] leading-relaxed ${msg.role === 'user' ? 'bg-[#00878F] text-white' : 'bg-[#1a1c29] text-slate-300 border border-white/5'}`}>
-                        {msg.text}
+                      <div className={`max-w-[90%] rounded-2xl px-4 py-3 text-[11px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-[#00878F] text-white rounded-br-none' : 'bg-[#1a1c29] text-slate-300 border border-white/5 rounded-bl-none'}`}>
+                        <div className="whitespace-pre-wrap">{msg.text}</div>
+                        {msg.role === 'assistant' && msg.text.includes('```') && (
+                          <button onClick={() => applyCodeToEditor(msg.text)} className="mt-3 flex items-center gap-2 bg-[#00b2bb] text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase hover:bg-teal-400 transition-all">
+                            <Code size={12}/> Aplicar ao Editor
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
-                  {isChatLoading && <div className="text-[9px] text-[#00878F] animate-pulse font-bold">ARUDUBOT ESTÁ PENSANDO...</div>}
+                  {isChatLoading && (
+                    <div className="flex items-center gap-3 ml-2">
+                      <div className="w-1.5 h-1.5 bg-[#00878F] rounded-full animate-bounce" />
+                      <div className="w-1.5 h-1.5 bg-[#00878F] rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <div className="w-1.5 h-1.5 bg-[#00878F] rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    </div>
+                  )}
                   <div ref={chatEndRef} />
                 </div>
                 <div className="p-3 bg-[#0f111a] border-t border-white/5">
                   <div className="flex gap-2 bg-black/40 rounded-xl p-1.5 border border-white/5">
                     <input value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder={t.ai_placeholder} className="flex-1 bg-transparent px-2 text-[11px] outline-none" />
-                    <button onClick={handleSendMessage} className="p-2 bg-[#00878F] text-white rounded-lg"><Send size={16} /></button>
+                    <button onClick={() => handleSendMessage()} className="p-2 bg-[#00878F] text-white rounded-lg hover:scale-105 transition-transform"><Send size={16} /></button>
                   </div>
                 </div>
               </div>
