@@ -3,45 +3,61 @@ import { GoogleGenAI } from "@google/genai";
 
 /**
  * ArduProgram IDE - AI Service
- * Utiliza a chave pré-configurada no ambiente.
+ * Especializado em desenvolvimento de firmware Arduino.
  */
 
+// Use direct initialization from process.env.API_KEY as per @google/genai guidelines
 export const getCodeAssistance = async (prompt: string, currentCode: string) => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // Simplifed content structure as per guidelines
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Código Arduino Atual:\n${currentCode}\n\nDúvida do Usuário: ${prompt}`,
+      contents: `Você é o ArduBot, o assistente oficial da IDE ArduProgram. 
+          AJUDE O USUÁRIO COM O CÓDIGO ABAIXO.
+          
+          CÓDIGO ATUAL:
+          \`\`\`cpp
+          ${currentCode}
+          \`\`\`
+          
+          PERGUNTA: ${prompt}
+          
+          REGRAS:
+          1. Responda em Português (Brasil).
+          2. Se sugerir alterações, forneça o bloco de código completo em C++.
+          3. Seja breve e técnico.`,
       config: {
-        systemInstruction: "Você é um assistente especialista em Arduino e eletrônica. Responda de forma clara, técnica porém acessível, em português do Brasil. Use blocos de código 'cpp' para exemplos de código.",
+        temperature: 0.7,
+        topP: 0.9,
       },
     });
 
-    return response.text || "Sem resposta do assistente.";
+    // Use .text property directly (it's a getter, not a method)
+    return response.text || "Sem resposta da IA.";
   } catch (error: any) {
-    console.error("AI Error:", error);
-    return "Erro ao processar a requisição com a IA. Verifique sua conexão.";
+    console.error("Gemini Error:", error);
+    return `❌ Erro na conexão: ${error.message || "Verifique sua conexão."}`;
   }
 };
 
 export const analyzeCode = async (code: string) => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Analise este código Arduino em busca de erros ou melhorias: ${code}`,
+      contents: `Aja como o compilador do Arduino. Verifique se este código compilaria ou se tem erros óbvios: ${code}`,
     });
 
+    // Use .text property directly
     return { 
-      status: "Ok", 
-      summary: response.text || "Análise concluída."
+      status: "Análise", 
+      summary: response.text?.slice(0, 500) || "Análise concluída."
     };
-  } catch (error: any) {
-    const hasSetup = code.includes("void setup()");
-    const hasLoop = code.includes("void loop()");
-    if (!hasSetup || !hasLoop) {
-      return { status: "Aviso", summary: "Estrutura básica ausente (setup/loop). Verifique o código manualmente." };
-    }
-    return { status: "Erro", summary: "Não foi possível realizar a análise avançada com a IA no momento." };
+  } catch (error) {
+    console.error("Analysis Error:", error);
+    return { status: "Offline", summary: "Não foi possível verificar o código remotamente." };
   }
 };
