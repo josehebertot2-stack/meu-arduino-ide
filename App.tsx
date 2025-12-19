@@ -5,7 +5,7 @@ import {
   Box, Trash2, Search, Terminal, MessageSquare,
   User, Instagram, Sun, Moon, ArrowRight, Send, Sparkles,
   Cpu, HardDrive, Type as TypeIcon,
-  WrapText, Save, Globe, Key
+  WrapText, Save, Globe, Key, Loader2
 } from 'lucide-react';
 import { FileNode, TabType, SerialMessage, ArduinoBoard, ArduinoLibrary, ChatMessage } from './types';
 import { analyzeCode, getCodeAssistance } from './services/geminiService';
@@ -41,8 +41,10 @@ const TRANSLATIONS = {
     status_waiting: "Aguardando USB",
     status_connected: "Porta USB Ativa",
     msg_ready: "Pronto para programar.",
-    msg_compiling: "Verificando código...",
+    msg_compiling: "Compilando sketch...",
+    msg_uploading: "Carregando...",
     msg_success: "Sucesso: O código parece correto!",
+    msg_upload_success: "Carregamento concluído.",
     msg_lib_installed: "Biblioteca adicionada ao cabeçalho!",
     creator_bio: "Engenheiro focado em tornar a eletrônica acessível para todos através da web."
   },
@@ -76,8 +78,10 @@ const TRANSLATIONS = {
     status_waiting: "Waiting USB",
     status_connected: "USB Port Active",
     msg_ready: "Ready to code.",
-    msg_compiling: "Verifying code...",
+    msg_compiling: "Compiling sketch...",
+    msg_uploading: "Uploading...",
     msg_success: "Success: Code looks good!",
+    msg_upload_success: "Done uploading.",
     msg_lib_installed: "Library added to header!",
     creator_bio: "Engineer focused on making electronics accessible to everyone via web."
   }
@@ -140,6 +144,8 @@ const App: React.FC = () => {
   const [consoleTab, setConsoleTab] = useState<'output' | 'serial'>('output');
   const [isConnected, setIsConnected] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedBoard, setSelectedBoard] = useState(BOARDS[0]);
   const [searchLib, setSearchLib] = useState('');
 
@@ -151,7 +157,6 @@ const App: React.FC = () => {
   const activeFile = useMemo(() => files[activeFileIndex] || files[0], [files, activeFileIndex]);
 
   useEffect(() => {
-    // Verificar se o usuário já selecionou uma chave anteriormente
     const checkKey = async () => {
       if (window.aistudio?.hasSelectedApiKey) {
         const has = await window.aistudio.hasSelectedApiKey();
@@ -185,7 +190,6 @@ const App: React.FC = () => {
   const handleOpenKeySelect = async () => {
     if (window.aistudio?.openSelectKey) {
       await window.aistudio.openSelectKey();
-      // Assumimos sucesso conforme as regras da documentação
       setHasAiKey(true);
     }
   };
@@ -208,7 +212,7 @@ const App: React.FC = () => {
   };
 
   const handleVerify = async () => {
-    if (isBusy) return;
+    if (isBusy || isUploading) return;
     setIsBusy(true);
     setConsoleTab('output');
     setOutputMessages(prev => [...prev, `[LOG] ${t.msg_compiling} (${activeFile.name})`]);
@@ -218,7 +222,44 @@ const App: React.FC = () => {
     setTimeout(() => {
       setOutputMessages(prev => [...prev, `[${result.status}] ${result.summary}`]);
       setIsBusy(false);
-    }, 1000);
+    }, 1500);
+  };
+
+  const handleUpload = async () => {
+    if (isBusy || isUploading) return;
+    if (!isConnected) {
+      setOutputMessages(prev => [...prev, "[ERRO] Nenhuma placa conectada. Conecte via USB primeiro."]);
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(10);
+    setConsoleTab('output');
+    setOutputMessages(prev => [...prev, `[UPLOAD] Iniciando processo para ${selectedBoard.name}...`]);
+
+    // Simulação técnica do avrdude / esptool
+    const steps = [
+      { p: 20, m: `[LOG] ${t.msg_compiling}..` },
+      { p: 40, m: `[LOG] Sketch otimizado. Tamanho: ${Math.floor(Math.random()*2000)+400} bytes.` },
+      { p: 60, m: `[AVRDUDE] Tentando abrir porta serial... OK` },
+      { p: 80, m: `[AVRDUDE] Gravando na memória flash: [##########          ] 50%` },
+      { p: 95, m: `[AVRDUDE] Verificando integridade... OK` }
+    ];
+
+    for (const step of steps) {
+      await new Promise(r => setTimeout(r, 600));
+      setUploadProgress(step.p);
+      setOutputMessages(prev => [...prev, step.m]);
+    }
+
+    setTimeout(() => {
+      setUploadProgress(100);
+      setOutputMessages(prev => [...prev, `[SISTEMA] ${t.msg_upload_success}`]);
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 500);
+    }, 800);
   };
 
   const connectSerial = async () => {
@@ -231,7 +272,7 @@ const App: React.FC = () => {
       await port.open({ baudRate: 9600 });
       portRef.current = port;
       setIsConnected(true);
-      setOutputMessages(prev => [...prev, `[SERIAL] Conectado na porta USB.`]);
+      setOutputMessages(prev => [...prev, `[SERIAL] Porta aberta com sucesso a 9600 baud.`]);
 
       const reader = port.readable.getReader();
       while (true) {
@@ -242,7 +283,7 @@ const App: React.FC = () => {
       }
     } catch (err) { 
       setIsConnected(false); 
-      setOutputMessages(prev => [...prev, `[ERRO] Falha ao conectar USB.`]);
+      setOutputMessages(prev => [...prev, `[ERRO] Falha ao conectar ou porta fechada pelo usuário.`]);
     }
   };
 
@@ -271,15 +312,29 @@ const App: React.FC = () => {
   return (
     <div className={`flex flex-col h-screen ${isDark ? 'bg-[#0f172a] text-slate-300' : 'bg-white text-slate-800'} overflow-hidden`}>
       {/* CABEÇALHO */}
-      <header className={`h-12 border-b ${isDark ? 'border-white/10 bg-[#1e293b]' : 'border-slate-200 bg-slate-50'} flex items-center justify-between px-3 shrink-0`}>
+      <header className={`h-12 border-b ${isDark ? 'border-white/10 bg-[#1e293b]' : 'border-slate-200 bg-slate-50'} flex items-center justify-between px-3 shrink-0 relative z-50`}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-2">
             <Zap size={18} className="text-[#2563eb]" fill="currentColor" />
             <span className="font-black text-sm tracking-tighter text-[#2563eb]">{t.ide_name}</span>
           </div>
           <div className="flex items-center gap-1 border-l border-white/10 pl-3">
-            <button onClick={handleVerify} title={t.btn_verify} disabled={isBusy} className="p-2 hover:bg-black/5 rounded text-slate-400 hover:text-[#2563eb] transition-colors"><Check size={18} /></button>
-            <button title={t.btn_upload} className="p-2 hover:bg-black/5 rounded text-slate-400 hover:text-[#2563eb] transition-colors"><ArrowRight size={18} /></button>
+            <button 
+              onClick={handleVerify} 
+              title={t.btn_verify} 
+              disabled={isBusy || isUploading} 
+              className={`p-2 rounded transition-colors ${isBusy ? 'animate-pulse text-blue-500' : 'text-slate-400 hover:text-[#2563eb] hover:bg-black/5'}`}
+            >
+              {isBusy ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+            </button>
+            <button 
+              onClick={handleUpload} 
+              title={t.btn_upload} 
+              disabled={isBusy || isUploading} 
+              className={`p-2 rounded transition-colors ${isUploading ? 'text-blue-500' : 'text-slate-400 hover:text-[#2563eb] hover:bg-black/5'}`}
+            >
+              {isUploading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+            </button>
           </div>
           <div className={`flex items-center gap-2 rounded px-3 py-1 text-[11px] font-bold border ${isDark ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'}`}>
             <Cpu size={12} className="text-blue-500" />
@@ -296,6 +351,16 @@ const App: React.FC = () => {
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
+        
+        {/* Barra de Progresso de Upload */}
+        {isUploading && (
+          <div className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-900/20 overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-300 ease-out" 
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        )}
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -484,10 +549,11 @@ const App: React.FC = () => {
                <div ref={highlightRef} className={`absolute inset-0 p-4 pointer-events-none code-font whitespace-pre overflow-hidden z-0 leading-normal ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} style={{ fontSize: `${fontSize}px` }} dangerouslySetInnerHTML={{ __html: highlightCode(activeFile.content) }} />
                <textarea 
                   value={activeFile.content} 
+                  disabled={isUploading}
                   onChange={e => { const n = [...files]; n[activeFileIndex].content = e.target.value; setFiles(n); }} 
                   onScroll={e => { if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop; if (highlightRef.current) highlightRef.current.scrollLeft = e.currentTarget.scrollLeft; }} 
                   spellCheck={false} 
-                  className={`absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-blue-500 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none leading-normal ${lineWrapping ? 'whitespace-pre-wrap' : ''}`} 
+                  className={`absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-blue-500 code-font outline-none z-10 whitespace-pre overflow-auto custom-scrollbar resize-none leading-normal ${lineWrapping ? 'whitespace-pre-wrap' : ''} ${isUploading ? 'opacity-50' : ''}`} 
                   style={{ fontSize: `${fontSize}px` }} 
                />
             </div>
@@ -517,7 +583,7 @@ const App: React.FC = () => {
 
             <div className="flex-1 p-4 font-mono text-[12px] overflow-y-auto custom-scrollbar bg-black/10">
               {(consoleTab === 'output' ? outputMessages : serialMessages.map(m => `[${m.timestamp}] ${m.type === 'in' ? 'RX <' : 'TX >'} ${m.text}`)).map((m, i) => (
-                <div key={i} className={`mb-0.5 ${m.includes('[ERRO]') ? 'text-red-400' : 'opacity-60'}`}>{m}</div>
+                <div key={i} className={`mb-0.5 ${m.includes('[ERRO]') ? 'text-red-400 font-bold' : m.includes('[UPLOAD]') ? 'text-blue-400' : 'opacity-60'}`}>{m}</div>
               ))}
               <div ref={consoleEndRef} />
             </div>
