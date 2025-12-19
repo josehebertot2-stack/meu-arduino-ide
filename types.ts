@@ -6,12 +6,12 @@ export interface FileNode {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   text: string;
   code?: string;
 }
 
-export type TabType = 'files' | 'ai' | 'examples' | 'libraries' | 'creator' | 'settings';
+export type TabType = 'files' | 'ai' | 'examples' | 'libraries' | 'creator' | 'settings' | 'puter';
 
 export interface SerialMessage {
   timestamp: string;
@@ -38,4 +38,10 @@ export interface ArduinoLibrary {
   author: string;
   description: string;
   header: string;
+}
+
+export interface PuterItem {
+  name: string;
+  path: string;
+  is_dir: boolean;
 }

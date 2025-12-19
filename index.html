@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -5,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARDUPROGRAM IDE</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.puter.com/v2/"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -35,6 +37,15 @@
 
         .code-font span {
             white-space: pre;
+        }
+
+        /* Animação para o logo Puter */
+        .puter-pulse {
+            animation: puter-glow 2s infinite alternate;
+        }
+        @keyframes puter-glow {
+            from { filter: drop-shadow(0 0 2px #3b82f6); }
+            to { filter: drop-shadow(0 0 8px #3b82f6); }
         }
     </style>
 <script type="importmap">
