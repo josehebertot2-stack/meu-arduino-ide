@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
  */
 
 const getAIClient = () => {
+  // Always use process.env.API_KEY directly as per guidelines.
   const apiKey = process.env.API_KEY;
   if (!apiKey || apiKey === "undefined") {
     throw new Error("API_KEY_MISSING");
@@ -14,32 +15,33 @@ const getAIClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+// Use gemini-3-pro-preview for complex coding tasks.
 export const getCodeAssistance = async (prompt: string, currentCode: string) => {
   try {
     const ai = getAIClient();
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Você é o ArduBot, o assistente oficial da IDE ArduProgram. 
-          AJUDE O USUÁRIO COM O CÓDIGO ABAIXO.
-          
-          CÓDIGO ATUAL:
+      model: 'gemini-3-pro-preview',
+      contents: `CÓDIGO ATUAL:
           \`\`\`cpp
           ${currentCode}
           \`\`\`
           
-          PERGUNTA: ${prompt}
-          
+          PERGUNTA DO USUÁRIO: ${prompt}`,
+      config: {
+        // Use systemInstruction as recommended.
+        systemInstruction: `Você é o ArduBot, o assistente oficial da IDE ArduProgram. 
+          AJUDE O USUÁRIO COM O DESENVOLVIMENTO DE FIRMWARE ARDUINO.
           REGRAS:
           1. Responda em Português (Brasil).
           2. Se sugerir alterações, forneça o bloco de código completo em C++.
           3. Seja breve e técnico.`,
-      config: {
         temperature: 0.7,
         topP: 0.9,
       },
     });
 
+    // response.text is a property, not a method.
     return response.text || "Sem resposta da IA.";
   } catch (error: any) {
     console.error("Gemini Error:", error);
@@ -59,7 +61,10 @@ export const analyzeCode = async (code: string) => {
     
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Aja como o compilador do Arduino. Verifique se este código compilaria ou se tem erros óbvios: ${code}`,
+      contents: `Verifique se este código compilaria ou se tem erros óbvios: ${code}`,
+      config: {
+        systemInstruction: "Aja como o compilador do Arduino.",
+      }
     });
 
     return { 
